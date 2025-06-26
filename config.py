@@ -1,0 +1,480 @@
+"""
+Configuration file for Technician-WorkOrder Matching Application
+using cuOpt and OSRM for route optimization
+OPTIMIZED FOR HIGH PERFORMANCE
+"""
+
+import os
+from typing import Dict, Any, Optional
+
+# =============================================================================
+# OSRM Configuration
+# =============================================================================
+
+OSRM_CONFIG = {
+    'host': '192.168.100.20',
+    'port': 5000,
+    'base_url': 'http://192.168.100.20:5000',
+    'table_endpoint': '/table/v1/driving/',
+    'timeout': 30,  # seconds
+    'max_locations_per_request': 500,  # OSRM limitation
+    'annotations': ['duration', 'distance']
+}
+
+# =============================================================================
+# cuOpt Solver Configuration - PERFORMANCE OPTIMIZED
+# =============================================================================
+
+CUOPT_CONFIG = {
+    'default_time_limit': 1,      # Reduced from 2 to 1 second
+    'verbose_mode': False,        # Always false for performance
+    'error_logging': False,       # Disable for maximum performance
+    'min_vehicles_auto': True,
+    'dump_results': False,
+    'results_file_path': './results/',
+    'results_interval': 10,
+
+    # Performance thresholds
+    'small_problem_threshold': 15,    # Problems ≤15 locations = tiny
+    'medium_problem_threshold': 50,   # Problems ≤50 locations = small
+    'performance_mode': True,
+    'skip_breaks_threshold': 10,      # Skip breaks for problems ≤10 locations
+    'minimal_constraints_threshold': 15,  # Minimal constraints for tiny problems
+
+    # ULTRA-aggressive time limits by problem size
+    'time_limits': {
+        'tiny': 0.1,      # ≤15 locations: 100ms (was 300ms)
+        'small': 0.3,     # ≤50 locations: 300ms (was 800ms)
+        'medium': 1.0,    # ≤100 locations: 1s (was 2s)
+        'large': 3.0      # >100 locations: 3s (was 5s)
+    },
+
+    # cuOpt specific settings
+    'solver_settings': {
+        'time_limit': 2,
+        'verbose': False,         # Performance critical
+        'error_logging': False    # Performance critical
+    },
+
+    # Objective types
+    'objectives': {
+        'COST': 'cost',
+        'PRIZE': 'prize',
+        'VEHICLE_COUNT': 'vehicles'
+    }
+}
+
+# =============================================================================
+# Business Logic Configuration
+# =============================================================================
+
+BUSINESS_CONFIG = {
+    # Time units (all times should be in the same unit)
+    'time_unit': 'minutes',  # 'seconds', 'minutes', 'hours'
+
+    # Default service times per work order type (in minutes)
+    'default_service_times': {
+        'maintenance': 60,
+        'repair': 90,
+        'inspection': 30,
+        'installation': 120,
+        'emergency': 45
+    },
+
+    # Priority weights for work orders
+    'priority_weights': {
+        'low': 1,
+        'medium': 2,
+        'high': 5,
+        'critical': 10,
+        'emergency': 20
+    },
+
+    # Break configuration
+    'break_config': {
+        'default_duration': 30,  # minutes
+        'earliest_start_offset': 240,  # 4 hours after shift start
+        'latest_start_offset': 480,   # 8 hours after shift start
+        'mandatory': True
+    },
+
+    # Vehicle/Technician constraints
+    'technician_constraints': {
+        'max_daily_working_hours': 8,  # hours
+        'max_travel_time_per_day': 4,  # hours
+        'max_orders_per_day': 10,
+        'lunch_break_required': True
+    }
+}
+
+# =============================================================================
+# Data Processing Configuration
+# =============================================================================
+
+DATA_CONFIG = {
+    # Coordinate system
+    'coordinate_system': 'WGS84',  # lat, lon
+    'coordinate_precision': 6,  # decimal places
+
+    # Input validation
+    'max_technicians': 50,
+    'max_work_orders': 500,
+    'max_locations_total': 550,  # max_technicians + max_work_orders
+
+    # Data file paths
+    'input_data_path': './data/input/',
+    'output_data_path': './data/output/',
+    'logs_path': './logs/',
+
+    # File formats
+    'supported_input_formats': ['.csv', '.json', '.xlsx'],
+    'output_format': 'csv',
+
+    # API data validation
+    'api_validation': {
+        'min_technicians': 1,
+        'min_work_orders': 1,
+        'max_skills_per_tech': 20,
+        'max_skills_per_order': 10,
+        'max_name_length': 100,
+        'max_description_length': 500,
+        'max_address_length': 200
+    },
+
+    # Data conversion settings
+    'conversion': {
+        'strict_validation': True,
+        'allow_partial_conversion': False,
+        'default_service_time': 60,  # minutes
+        'default_break_duration': 30,  # minutes
+        'default_max_daily_orders': 10
+    }
+}
+
+# =============================================================================
+# Optimization Objectives Configuration
+# =============================================================================
+
+OPTIMIZATION_CONFIG = {
+    # Primary objective weights
+    'objective_weights': {
+        'minimize_travel_time': 1.0,
+        'maximize_priority_score': 0.5,
+        'minimize_technicians_used': 0.3,
+        'balance_workload': 0.2
+    },
+
+    # Optimization strategy
+    'strategy': 'speed',  # Changed from 'balanced' to 'speed'
+
+    # Advanced settings
+    'allow_overtime': False,
+    'allow_unassigned_orders': True,
+    'prefer_skill_matching': True,
+
+    # Performance settings
+    'skip_complex_constraints_threshold': 15,  # Skip complex constraints for tiny problems
+    'fast_mode_enabled': True
+}
+
+# =============================================================================
+# Logging Configuration - OPTIMIZED FOR PERFORMANCE
+# =============================================================================
+
+LOGGING_CONFIG = {
+    'level': 'WARNING',  # Reduced from INFO to WARNING for performance
+    'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    'file_path': './logs/technician_matching.log',
+    'max_file_size': 10,  # MB
+    'backup_count': 5,
+    'console_output': True,
+
+    # API specific logging - reduced for performance
+    'api_logging': {
+        'log_requests': False,        # Disabled for performance
+        'log_responses': False,       # Disabled for performance
+        'log_request_body': False,
+        'log_response_body': False,
+        'performance_logging': True   # Keep performance metrics
+    },
+
+    # Component logging levels - reduced for performance
+    'component_levels': {
+        'uvicorn': 'WARNING',     # Reduced from INFO
+        'fastapi': 'WARNING',     # Reduced from INFO
+        'osrm': 'WARNING',        # Reduced from INFO
+        'solver': 'WARNING',      # Reduced from INFO
+        'converter': 'WARNING'    # Reduced from INFO
+    }
+}
+
+# =============================================================================
+# API Configuration
+# =============================================================================
+
+API_CONFIG = {
+    'host': '0.0.0.0',
+    'port': 8000,
+    'debug': False,
+    'cors_enabled': True,
+    'cors_origins': ["*"],  # Configure for security in production
+    'title': 'Technician WorkOrder Optimization API',
+    'description': 'API for optimizing technician-workorder assignments using cuOpt and OSRM',
+    'version': '1.0.0',
+    'docs_url': '/docs',
+    'redoc_url': '/redoc',
+    'rate_limiting': {
+        'enabled': True,
+        'max_requests_per_minute': 60
+    },
+    'request_timeout': 300,  # 5 minutes for complex optimizations
+    'max_request_size': 10 * 1024 * 1024,  # 10MB
+}
+
+# =============================================================================
+# Configuration Assembly
+# =============================================================================
+
+def get_config() -> Dict[str, Any]:
+    """
+    Get application configuration
+    """
+    config = {
+        'osrm': OSRM_CONFIG.copy(),
+        'cuopt': CUOPT_CONFIG.copy(),
+        'business': BUSINESS_CONFIG.copy(),
+        'data': DATA_CONFIG.copy(),
+        'optimization': OPTIMIZATION_CONFIG.copy(),
+        'logging': LOGGING_CONFIG.copy(),
+        'api': API_CONFIG.copy()
+    }
+
+    # Override with environment variables if present
+    if os.getenv('OSRM_HOST'):
+        config['osrm']['host'] = os.getenv('OSRM_HOST')
+        config['osrm']['base_url'] = f"http://{os.getenv('OSRM_HOST')}:{config['osrm']['port']}"
+
+    if os.getenv('OSRM_PORT'):
+        config['osrm']['port'] = int(os.getenv('OSRM_PORT'))
+        config['osrm']['base_url'] = f"http://{config['osrm']['host']}:{os.getenv('OSRM_PORT')}"
+
+    return config
+
+# =============================================================================
+# Performance Helper Functions
+# =============================================================================
+
+def get_optimal_time_limit(problem_size: int) -> float:
+    """
+    Get optimal time limit based on problem size for maximum performance
+
+    Args:
+        problem_size: Total number of locations (technicians + work orders)
+
+    Returns:
+        float: Optimal time limit in seconds
+    """
+    config = get_config()
+
+    if problem_size <= config['cuopt']['small_problem_threshold']:
+        return config['cuopt']['time_limits']['tiny']
+    elif problem_size <= config['cuopt']['medium_problem_threshold']:
+        return config['cuopt']['time_limits']['small']
+    elif problem_size <= 100:
+        return config['cuopt']['time_limits']['medium']
+    else:
+        return config['cuopt']['time_limits']['large']
+
+def should_skip_complex_constraints(problem_size: int) -> bool:
+    """
+    Determine if complex constraints should be skipped for performance
+
+    Args:
+        problem_size: Total number of locations
+
+    Returns:
+        bool: True if complex constraints should be skipped
+    """
+    config = get_config()
+    return (problem_size <= config['optimization']['skip_complex_constraints_threshold'] and
+            config['optimization']['fast_mode_enabled'])
+
+# =============================================================================
+# Validation functions
+# =============================================================================
+
+def validate_config() -> bool:
+    """
+    Validate configuration settings
+    """
+    config = get_config()
+
+    # Check OSRM connectivity with a simple API test
+    try:
+        import requests
+        # First check if server responds to root (even with error)
+        response = requests.get(f"{config['osrm']['base_url']}/", timeout=5)
+        if response.status_code not in [200, 400]:
+            print(f"Warning: OSRM server returned unexpected status: {response.status_code}")
+            return False
+
+        # Test with a simple coordinate to verify API actually works
+        test_url = f"{config['osrm']['base_url']}/table/v1/driving/103.8198,1.3521;103.8478,1.3644"
+        api_response = requests.get(test_url, timeout=10)
+        if api_response.status_code == 200:
+            api_data = api_response.json()
+            if api_data.get('code') == 'Ok':
+                print("✅ OSRM server is accessible and API is working")
+            else:
+                print(f"Warning: OSRM API returned: {api_data.get('message', 'Unknown error')}")
+        else:
+            print(f"Warning: OSRM API test failed with status: {api_response.status_code}")
+
+    except Exception as e:
+        print(f"Warning: Cannot connect to OSRM server: {e}")
+        return False
+
+    # Validate file paths
+    for path_key in ['input_data_path', 'output_data_path', 'logs_path']:
+        path = config['data'][path_key]
+        if not os.path.exists(path):
+            try:
+                os.makedirs(path, exist_ok=True)
+                print(f"Created directory: {path}")
+            except Exception as e:
+                print(f"Error creating directory {path}: {e}")
+                return False
+
+    # Validate data limits
+    if config['data']['max_technicians'] <= 0:
+        print("Error: max_technicians must be positive")
+        return False
+
+    if config['data']['max_work_orders'] <= 0:
+        print("Error: max_work_orders must be positive")
+        return False
+
+    # Validate OSRM configuration
+    if config['osrm']['max_locations_per_request'] > 100:
+        print("Warning: OSRM max_locations_per_request is high, may cause timeouts")
+
+    # Validate API configuration
+    if config['api']['port'] < 1024 or config['api']['port'] > 65535:
+        print("Warning: API port should be between 1024-65535")
+
+    # Validate solver configuration
+    if config['cuopt']['default_time_limit'] <= 0:
+        print("Error: solver time_limit must be positive")
+        return False
+
+    print("✅ Configuration validation passed")
+    return True
+
+# =============================================================================
+# Helper functions
+# =============================================================================
+
+def convert_time_to_minutes(value: float, unit: str) -> float:
+    """Convert time value to minutes based on unit"""
+    if unit == 'seconds':
+        return value / 60
+    elif unit == 'minutes':
+        return value
+    elif unit == 'hours':
+        return value * 60
+    else:
+        raise ValueError(f"Unsupported time unit: {unit}")
+
+def convert_time_from_minutes(value: float, unit: str) -> float:
+    """Convert time value from minutes to specified unit"""
+    if unit == 'seconds':
+        return value * 60
+    elif unit == 'minutes':
+        return value
+    elif unit == 'hours':
+        return value / 60
+    else:
+        raise ValueError(f"Unsupported time unit: {unit}")
+
+
+def setup_logging(config: Optional[Dict[str, Any]] = None) -> None:
+    """
+    Setup logging configuration for the application
+
+    Args:
+        config: Optional config override, uses global CONFIG if None
+    """
+    import logging.handlers
+
+    log_config = (config or CONFIG)['logging']
+
+    # Create formatter
+    formatter = logging.Formatter(log_config['format'])
+
+    # Setup root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(getattr(logging, log_config['level']))
+
+    # Clear existing handlers
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+
+    # Console handler
+    if log_config['console_output']:
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        root_logger.addHandler(console_handler)
+
+    # File handler with rotation
+    if log_config['file_path']:
+        # Ensure log directory exists
+        log_dir = os.path.dirname(log_config['file_path'])
+        if log_dir and not os.path.exists(log_dir):
+            os.makedirs(log_dir, exist_ok=True)
+
+        file_handler = logging.handlers.RotatingFileHandler(
+            log_config['file_path'],
+            maxBytes=log_config['max_file_size'] * 1024 * 1024,  # Convert MB to bytes
+            backupCount=log_config['backup_count']
+        )
+        file_handler.setFormatter(formatter)
+        root_logger.addHandler(file_handler)
+
+    # Set component-specific log levels
+    if 'component_levels' in log_config:
+        for component, level in log_config['component_levels'].items():
+            logging.getLogger(component).setLevel(getattr(logging, level))
+
+
+def get_api_config() -> Dict[str, Any]:
+    """
+    Get API-specific configuration
+
+    Returns:
+        dict: API configuration settings
+    """
+    return CONFIG['api'].copy()
+
+
+def get_solver_config() -> Dict[str, Any]:
+    """
+    Get solver-specific configuration
+
+    Returns:
+        dict: Solver configuration settings
+    """
+    return CONFIG['cuopt'].copy()
+
+# Initialize configuration on module import
+CONFIG = get_config()
+
+if __name__ == "__main__":
+    # Test configuration
+    print("Configuration loaded successfully!")
+    print(f"OSRM URL: {CONFIG['osrm']['base_url']}")
+
+    # Validate configuration
+    if validate_config():
+        print("✅ Configuration validation passed")
+    else:
+        print("❌ Configuration validation failed")
