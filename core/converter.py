@@ -527,7 +527,8 @@ def get_technician_json_schema() -> Dict[str, Any]:
         "max_daily_orders": 8,
         "max_travel_time": 240,
         "hourly_rate": 50.0,
-        "vehicle_type": "van"
+        "vehicle_type": "van",
+        "drop_return_trip": False
     }
 
 

@@ -21,7 +21,8 @@
       "max_daily_orders": 15,
       "max_travel_time": 400,
       "hourly_rate": 65.0,
-      "vehicle_type": "van"
+      "vehicle_type": "van",
+      "drop_return_trip": true
     },
     {
       "id": "TECH002",
@@ -44,7 +45,8 @@
       "max_daily_orders": 15,
       "max_travel_time": 400,
       "hourly_rate": 70.0,
-      "vehicle_type": "van"
+      "vehicle_type": "van",
+      "drop_return_trip": true
     },
     {
       "id": "TECH003",
@@ -67,7 +69,8 @@
       "max_daily_orders": 15,
       "max_travel_time": 400,
       "hourly_rate": 75.0,
-      "vehicle_type": "van"
+      "vehicle_type": "van",
+      "drop_return_trip": true
     },
     {
       "id": "TECH004",
@@ -90,7 +93,8 @@
       "max_daily_orders": 15,
       "max_travel_time": 400,
       "hourly_rate": 68.0,
-      "vehicle_type": "van"
+      "vehicle_type": "van",
+      "drop_return_trip": true
     },
     {
       "id": "TECH005",
@@ -113,7 +117,8 @@
       "max_daily_orders": 15,
       "max_travel_time": 400,
       "hourly_rate": 72.0,
-      "vehicle_type": "van"
+      "vehicle_type": "van",
+      "drop_return_trip": true
     },
     {
       "id": "TECH006",
@@ -136,7 +141,8 @@
       "max_daily_orders": 15,
       "max_travel_time": 400,
       "hourly_rate": 78.0,
-      "vehicle_type": "van"
+      "vehicle_type": "van",
+      "drop_return_trip": true
     },
     {
       "id": "TECH007",
@@ -159,7 +165,8 @@
       "max_daily_orders": 15,
       "max_travel_time": 400,
       "hourly_rate": 66.0,
-      "vehicle_type": "van"
+      "vehicle_type": "van",
+      "drop_return_trip": true
     },
     {
       "id": "TECH008",
@@ -182,7 +189,8 @@
       "max_daily_orders": 15,
       "max_travel_time": 400,
       "hourly_rate": 63.0,
-      "vehicle_type": "van"
+      "vehicle_type": "van",
+      "drop_return_trip": true
     },
     {
       "id": "TECH009",
@@ -205,7 +213,8 @@
       "max_daily_orders": 15,
       "max_travel_time": 400,
       "hourly_rate": 77.0,
-      "vehicle_type": "van"
+      "vehicle_type": "van",
+      "drop_return_trip": true
     },
     {
       "id": "TECH010",
@@ -228,7 +237,8 @@
       "max_daily_orders": 15,
       "max_travel_time": 400,
       "hourly_rate": 69.0,
-      "vehicle_type": "van"
+      "vehicle_type": "van",
+      "drop_return_trip": true
     }
   ],
   "work_orders": [

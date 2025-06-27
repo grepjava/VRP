@@ -671,11 +671,17 @@ class TechnicianWorkOrderSolver:
         vehicle_locs = cudf.Series(list(range(n_technicians)), dtype=np.int32)
         data_model.set_vehicle_locations(vehicle_locs, vehicle_locs)
 
-        # 3. Set order locations (vectorized)
+        # 3. Set drop return trips
+        drop_return_flags = [tech.drop_return_trip for tech in problem.technicians]
+        if any(drop_return_flags):  # Only set if any technician has drop_return_trip=True
+            data_model.set_drop_return_trips(cudf.Series(drop_return_flags, dtype=bool))
+            print(f"   🚗 Drop return trips configured: {sum(drop_return_flags)} technicians")
+
+        # 4. Set order locations (vectorized)
         order_locs = cudf.Series(list(range(n_technicians, n_locations)), dtype=np.int32)
         data_model.set_order_locations(order_locs)
 
-        # 4. Set order time windows (vectorized)
+        # 5. Set order time windows (vectorized)
         earliest_times = np.array([wo.time_window.earliest if wo.time_window else 0 for wo in problem.work_orders], dtype=np.int32)
         latest_times = np.array([wo.time_window.latest if wo.time_window else 1440 for wo in problem.work_orders], dtype=np.int32)
 
@@ -684,16 +690,16 @@ class TechnicianWorkOrderSolver:
             cudf.Series(latest_times)
         )
 
-        # 5. Set order service times (vectorized)
+        # 6. Set order service times (vectorized)
         service_times = np.array([wo.service_time for wo in problem.work_orders], dtype=np.int32)
         data_model.set_order_service_times(cudf.Series(service_times))
 
-        # 6. Set vehicle time windows (vectorized)
+        # 7. Set vehicle time windows (vectorized)
         veh_earliest = np.array([tech.work_shift.earliest for tech in problem.technicians], dtype=np.int32)
         veh_latest = np.array([tech.work_shift.latest for tech in problem.technicians], dtype=np.int32)
         data_model.set_vehicle_time_windows(cudf.Series(veh_earliest), cudf.Series(veh_latest))
 
-        # 7. CONDITIONAL: Skip breaks for tiny problems (major speedup)
+        # 8. CONDITIONAL: Skip breaks for tiny problems (major speedup)
         skip_breaks_threshold = self.cuopt_config.get('skip_breaks_threshold', 10)
         if problem_size > skip_breaks_threshold:
             for i, tech in enumerate(problem.technicians):
@@ -708,7 +714,7 @@ class TechnicianWorkOrderSolver:
             if not self.concurrent_mode:
                 print("   ⚡⚡ Skipping breaks (ultra-performance mode)")
 
-        # 8. Set capacity dimensions with performance optimizations
+        # 9. Set capacity dimensions with performance optimizations
         self._set_capacity_dimensions(data_model, problem.technicians, problem.work_orders, problem_size)
 
         return data_model

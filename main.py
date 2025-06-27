@@ -195,6 +195,7 @@ class TechnicianModel(BaseModel):
     max_travel_time: int = Field(240, ge=1, description="Maximum travel time per day in minutes")
     hourly_rate: float = Field(0.0, ge=0, description="Hourly rate")
     vehicle_type: str = Field("standard", description="Vehicle type")
+    drop_return_trip: Optional[bool] = Field(False, description="Skip return to start location after last task")
 
 
 class WorkOrderModel(BaseModel):
@@ -238,7 +239,8 @@ class OptimizationRequestModel(BaseModel):
                         "max_daily_orders": 8,
                         "max_travel_time": 300,
                         "hourly_rate": 65.0,
-                        "vehicle_type": "van"
+                        "vehicle_type": "van",
+                        "drop_return_trip": False
                     }
                 ],
                 "work_orders": [

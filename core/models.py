@@ -92,6 +92,7 @@ class Technician:
     max_travel_time: int = 240  # minutes (4 hours)
     hourly_rate: float = 0.0
     vehicle_type: str = "standard"
+    drop_return_trip: bool = False
 
     def __post_init__(self):
         """Validate technician data"""
@@ -129,7 +130,8 @@ class Technician:
             'max_daily_orders': self.max_daily_orders,
             'max_travel_time': self.max_travel_time,
             'hourly_rate': self.hourly_rate,
-            'vehicle_type': self.vehicle_type
+            'vehicle_type': self.vehicle_type,
+            'drop_return_trip': self.drop_return_trip
         }
 
 
@@ -391,7 +393,8 @@ def create_technician_from_dict(data: Dict[str, Any]) -> Technician:
         max_daily_orders=data.get('max_daily_orders', 10),
         max_travel_time=data.get('max_travel_time', 240),
         hourly_rate=data.get('hourly_rate', 0.0),
-        vehicle_type=data.get('vehicle_type', 'standard')
+        vehicle_type=data.get('vehicle_type', 'standard'),
+        drop_return_trip=data.get('drop_return_trip', False)
     )
 
 
