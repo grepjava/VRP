@@ -1,7 +1,7 @@
 """
 Configuration file for Technician-WorkOrder Matching Application
 using cuOpt and OSRM for route optimization
-OPTIMIZED FOR HIGH PERFORMANCE
+OPTIMIZED FOR HIGH PERFORMANCE WITH CUDA STREAMS
 """
 
 import os
@@ -22,7 +22,7 @@ OSRM_CONFIG = {
 }
 
 # =============================================================================
-# cuOpt Solver Configuration - PERFORMANCE OPTIMIZED
+# cuOpt Solver Configuration - PERFORMANCE OPTIMIZED WITH CUDA STREAMS
 # =============================================================================
 
 CUOPT_CONFIG = {
@@ -33,6 +33,27 @@ CUOPT_CONFIG = {
     'dump_results': False,
     'results_file_path': './results/',
     'results_interval': 10,
+
+    # CUDA Streams Configuration for Concurrent Execution
+    'concurrent_execution': {
+        'enabled': True,
+        'max_concurrent_solvers': 6,      # Number of concurrent cuOpt instances
+        'cuda_streams': 6,                # Number of CUDA streams to create
+        'memory_pool_per_solver': 1024,   # MB per solver instance
+        'queue_timeout': 30,              # Timeout for solver queue in seconds
+        'batch_processing': True,         # Enable batch processing mode
+        'load_balancing': 'round_robin'   # 'round_robin', 'least_loaded', 'memory_based'
+    },
+
+    # GPU Memory Management
+    'memory_management': {
+        'initial_pool_size': 2**30,       # 1GB initial pool
+        'maximum_pool_size': 8*2**30,     # 8GB maximum pool
+        'per_solver_limit': 1.2*2**30,    # 1.2GB per solver max
+        'enable_memory_pool': True,
+        'auto_defragment': True,
+        'memory_growth_strategy': 'linear'  # 'linear', 'exponential'
+    },
 
     # Performance thresholds
     'small_problem_threshold': 15,    # Problems ≤15 locations = tiny
@@ -47,6 +68,14 @@ CUOPT_CONFIG = {
         'small': 0.3,     # ≤50 locations: 300ms (was 800ms)
         'medium': 1.0,    # ≤100 locations: 1s (was 2s)
         'large': 3.0      # >100 locations: 3s (was 5s)
+    },
+
+    # Concurrent solver time limits (more aggressive for concurrent execution)
+    'concurrent_time_limits': {
+        'tiny': 0.05,     # ≤15 locations: 50ms
+        'small': 0.15,    # ≤50 locations: 150ms
+        'medium': 0.5,    # ≤100 locations: 500ms
+        'large': 1.5      # >100 locations: 1.5s
     },
 
     # cuOpt specific settings
@@ -121,6 +150,14 @@ DATA_CONFIG = {
     'max_work_orders': 500,
     'max_locations_total': 550,  # max_technicians + max_work_orders
 
+    # Concurrent processing limits
+    'concurrent_limits': {
+        'max_requests_per_minute': 360,  # 6 solvers * 60 requests/min
+        'max_concurrent_problems': 6,
+        'queue_size': 50,
+        'priority_queue_enabled': True
+    },
+
     # Data file paths
     'input_data_path': './data/input/',
     'output_data_path': './data/output/',
@@ -174,11 +211,20 @@ OPTIMIZATION_CONFIG = {
 
     # Performance settings
     'skip_complex_constraints_threshold': 15,  # Skip complex constraints for tiny problems
-    'fast_mode_enabled': True
+    'fast_mode_enabled': True,
+
+    # Concurrent optimization settings
+    'concurrent_optimization': {
+        'enable_problem_splitting': True,      # Split large problems across solvers
+        'min_problem_size_for_splitting': 100, # Minimum size to consider splitting
+        'split_strategy': 'geographic',        # 'geographic', 'skills', 'random'
+        'merge_results': True,                 # Merge split results back together
+        'load_balancing': True                 # Balance load across available solvers
+    }
 }
 
 # =============================================================================
-# Logging Configuration - OPTIMIZED FOR PERFORMANCE
+# Logging Configuration - OPTIMIZED FOR CONCURRENT EXECUTION
 # =============================================================================
 
 LOGGING_CONFIG = {
@@ -204,7 +250,17 @@ LOGGING_CONFIG = {
         'fastapi': 'WARNING',     # Reduced from INFO
         'osrm': 'WARNING',        # Reduced from INFO
         'solver': 'WARNING',      # Reduced from INFO
-        'converter': 'WARNING'    # Reduced from INFO
+        'converter': 'WARNING',   # Reduced from INFO
+        'concurrent': 'INFO'      # New: Concurrent execution logging
+    },
+
+    # Concurrent execution specific logging
+    'concurrent_logging': {
+        'log_stream_allocation': True,
+        'log_memory_usage': True,
+        'log_queue_status': True,
+        'log_solver_performance': True,
+        'performance_interval': 10  # seconds
     }
 }
 
@@ -219,16 +275,25 @@ API_CONFIG = {
     'cors_enabled': True,
     'cors_origins': ["*"],  # Configure for security in production
     'title': 'Technician WorkOrder Optimization API',
-    'description': 'API for optimizing technician-workorder assignments using cuOpt and OSRM',
+    'description': 'API for optimizing technician-workorder assignments using cuOpt and OSRM with CUDA Streams',
     'version': '1.0.0',
     'docs_url': '/docs',
     'redoc_url': '/redoc',
     'rate_limiting': {
         'enabled': True,
-        'max_requests_per_minute': 60
+        'max_requests_per_minute': 360  # Increased for concurrent processing
     },
     'request_timeout': 300,  # 5 minutes for complex optimizations
     'max_request_size': 10 * 1024 * 1024,  # 10MB
+
+    # Concurrent API processing
+    'concurrent_processing': {
+        'enabled': True,
+        'max_concurrent_requests': 6,
+        'queue_enabled': True,
+        'priority_handling': True,
+        'load_balancing': 'least_loaded'
+    }
 }
 
 # =============================================================================
@@ -258,32 +323,40 @@ def get_config() -> Dict[str, Any]:
         config['osrm']['port'] = int(os.getenv('OSRM_PORT'))
         config['osrm']['base_url'] = f"http://{config['osrm']['host']}:{os.getenv('OSRM_PORT')}"
 
+    # Override concurrent solver count if environment variable is set
+    if os.getenv('CUOPT_CONCURRENT_SOLVERS'):
+        config['cuopt']['concurrent_execution']['max_concurrent_solvers'] = int(os.getenv('CUOPT_CONCURRENT_SOLVERS'))
+        config['cuopt']['concurrent_execution']['cuda_streams'] = int(os.getenv('CUOPT_CONCURRENT_SOLVERS'))
+
     return config
 
 # =============================================================================
-# Performance Helper Functions
+# Performance Helper Functions - Enhanced for Concurrent Execution
 # =============================================================================
 
-def get_optimal_time_limit(problem_size: int) -> float:
+def get_optimal_time_limit(problem_size: int, concurrent_mode: bool = False) -> float:
     """
     Get optimal time limit based on problem size for maximum performance
 
     Args:
         problem_size: Total number of locations (technicians + work orders)
+        concurrent_mode: Whether to use concurrent execution time limits
 
     Returns:
         float: Optimal time limit in seconds
     """
     config = get_config()
 
+    time_limits = config['cuopt']['concurrent_time_limits'] if concurrent_mode else config['cuopt']['time_limits']
+
     if problem_size <= config['cuopt']['small_problem_threshold']:
-        return config['cuopt']['time_limits']['tiny']
+        return time_limits['tiny']
     elif problem_size <= config['cuopt']['medium_problem_threshold']:
-        return config['cuopt']['time_limits']['small']
+        return time_limits['small']
     elif problem_size <= 100:
-        return config['cuopt']['time_limits']['medium']
+        return time_limits['medium']
     else:
-        return config['cuopt']['time_limits']['large']
+        return time_limits['large']
 
 def should_skip_complex_constraints(problem_size: int) -> bool:
     """
@@ -299,13 +372,63 @@ def should_skip_complex_constraints(problem_size: int) -> bool:
     return (problem_size <= config['optimization']['skip_complex_constraints_threshold'] and
             config['optimization']['fast_mode_enabled'])
 
+def get_concurrent_solver_config() -> Dict[str, Any]:
+    """
+    Get configuration specific to concurrent solver execution
+
+    Returns:
+        dict: Concurrent solver configuration
+    """
+    config = get_config()
+    return config['cuopt']['concurrent_execution']
+
+def should_use_concurrent_execution(problem_count: int = 1) -> bool:
+    """
+    Determine if concurrent execution should be used
+
+    Args:
+        problem_count: Number of problems to solve
+
+    Returns:
+        bool: True if concurrent execution should be used
+    """
+    config = get_config()
+    concurrent_config = config['cuopt']['concurrent_execution']
+
+    return (concurrent_config['enabled'] and
+            problem_count >= 1 and
+            concurrent_config['max_concurrent_solvers'] > 1)
+
+def calculate_memory_per_solver(total_gpu_memory_gb: float) -> int:
+    """
+    Calculate optimal memory allocation per solver
+
+    Args:
+        total_gpu_memory_gb: Total GPU memory in GB
+
+    Returns:
+        int: Memory per solver in MB
+    """
+    config = get_config()
+    concurrent_config = config['cuopt']['concurrent_execution']
+    max_solvers = concurrent_config['max_concurrent_solvers']
+
+    # Reserve 20% of memory for system overhead
+    available_memory_gb = total_gpu_memory_gb * 0.8
+    memory_per_solver_gb = available_memory_gb / max_solvers
+
+    # Convert to MB and ensure minimum allocation
+    memory_per_solver_mb = max(512, int(memory_per_solver_gb * 1024))
+
+    return min(memory_per_solver_mb, concurrent_config['memory_pool_per_solver'])
+
 # =============================================================================
 # Validation functions
 # =============================================================================
 
 def validate_config() -> bool:
     """
-    Validate configuration settings
+    Validate configuration settings including concurrent execution
     """
     config = get_config()
 
@@ -333,6 +456,23 @@ def validate_config() -> bool:
     except Exception as e:
         print(f"Warning: Cannot connect to OSRM server: {e}")
         return False
+
+    # Validate concurrent execution configuration
+    concurrent_config = config['cuopt']['concurrent_execution']
+    if concurrent_config['enabled']:
+        if concurrent_config['max_concurrent_solvers'] <= 0:
+            print("Error: max_concurrent_solvers must be positive")
+            return False
+
+        if concurrent_config['cuda_streams'] <= 0:
+            print("Error: cuda_streams must be positive")
+            return False
+
+        if concurrent_config['memory_pool_per_solver'] <= 0:
+            print("Error: memory_pool_per_solver must be positive")
+            return False
+
+        print(f"✅ Concurrent execution configured: {concurrent_config['max_concurrent_solvers']} solvers, {concurrent_config['cuda_streams']} CUDA streams")
 
     # Validate file paths
     for path_key in ['input_data_path', 'output_data_path', 'logs_path']:
@@ -472,6 +612,8 @@ if __name__ == "__main__":
     # Test configuration
     print("Configuration loaded successfully!")
     print(f"OSRM URL: {CONFIG['osrm']['base_url']}")
+    print(f"Concurrent Solvers: {CONFIG['cuopt']['concurrent_execution']['max_concurrent_solvers']}")
+    print(f"CUDA Streams: {CONFIG['cuopt']['concurrent_execution']['cuda_streams']}")
 
     # Validate configuration
     if validate_config():

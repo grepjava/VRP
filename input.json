@@ -1,0 +1,1739 @@
+{
+  "technicians": [
+    {
+      "id": "TECH001",
+      "name": "Ahmad Rahman",
+      "start_location": {
+        "latitude": 3.108366,
+        "longitude": 101.581501,
+        "address": "Section 14, Petaling Jaya"
+      },
+      "work_shift": {
+        "earliest": 480,
+        "latest": 1080
+      },
+      "break_window": {
+        "earliest": 720,
+        "latest": 780
+      },
+      "break_duration": 60,
+      "skills": ["electrical"],
+      "max_daily_orders": 15,
+      "max_travel_time": 400,
+      "hourly_rate": 65.0,
+      "vehicle_type": "van"
+    },
+    {
+      "id": "TECH002",
+      "name": "Siti Nurhaliza",
+      "start_location": {
+        "latitude": 3.086502,
+        "longitude": 101.593393,
+        "address": "USJ 1, Subang Jaya"
+      },
+      "work_shift": {
+        "earliest": 480,
+        "latest": 1080
+      },
+      "break_window": {
+        "earliest": 720,
+        "latest": 780
+      },
+      "break_duration": 60,
+      "skills": ["electrical"],
+      "max_daily_orders": 15,
+      "max_travel_time": 400,
+      "hourly_rate": 70.0,
+      "vehicle_type": "van"
+    },
+    {
+      "id": "TECH003",
+      "name": "Lim Wei Ming",
+      "start_location": {
+        "latitude": 3.114188,
+        "longitude": 101.620602,
+        "address": "Section 17, Petaling Jaya"
+      },
+      "work_shift": {
+        "earliest": 480,
+        "latest": 1080
+      },
+      "break_window": {
+        "earliest": 720,
+        "latest": 780
+      },
+      "break_duration": 60,
+      "skills": ["electrical"],
+      "max_daily_orders": 15,
+      "max_travel_time": 400,
+      "hourly_rate": 75.0,
+      "vehicle_type": "van"
+    },
+    {
+      "id": "TECH004",
+      "name": "Rajesh Kumar",
+      "start_location": {
+        "latitude": 3.123531,
+        "longitude": 101.585216,
+        "address": "Section 4, Petaling Jaya"
+      },
+      "work_shift": {
+        "earliest": 480,
+        "latest": 1080
+      },
+      "break_window": {
+        "earliest": 720,
+        "latest": 780
+      },
+      "break_duration": 60,
+      "skills": ["electrical"],
+      "max_daily_orders": 15,
+      "max_travel_time": 400,
+      "hourly_rate": 68.0,
+      "vehicle_type": "van"
+    },
+    {
+      "id": "TECH005",
+      "name": "Wong Mei Ling",
+      "start_location": {
+        "latitude": 3.095315,
+        "longitude": 101.581788,
+        "address": "SS3, Petaling Jaya"
+      },
+      "work_shift": {
+        "earliest": 480,
+        "latest": 1080
+      },
+      "break_window": {
+        "earliest": 720,
+        "latest": 780
+      },
+      "break_duration": 60,
+      "skills": ["electrical"],
+      "max_daily_orders": 15,
+      "max_travel_time": 400,
+      "hourly_rate": 72.0,
+      "vehicle_type": "van"
+    },
+    {
+      "id": "TECH006",
+      "name": "Hassan Osman",
+      "start_location": {
+        "latitude": 3.123826,
+        "longitude": 101.606628,
+        "address": "Section 8, Petaling Jaya"
+      },
+      "work_shift": {
+        "earliest": 480,
+        "latest": 1080
+      },
+      "break_window": {
+        "earliest": 720,
+        "latest": 780
+      },
+      "break_duration": 60,
+      "skills": ["electrical"],
+      "max_daily_orders": 15,
+      "max_travel_time": 400,
+      "hourly_rate": 78.0,
+      "vehicle_type": "van"
+    },
+    {
+      "id": "TECH007",
+      "name": "Priya Devi",
+      "start_location": {
+        "latitude": 3.078625,
+        "longitude": 101.633238,
+        "address": "Bandar Sunway"
+      },
+      "work_shift": {
+        "earliest": 480,
+        "latest": 1080
+      },
+      "break_window": {
+        "earliest": 720,
+        "latest": 780
+      },
+      "break_duration": 60,
+      "skills": ["electrical"],
+      "max_daily_orders": 15,
+      "max_travel_time": 400,
+      "hourly_rate": 66.0,
+      "vehicle_type": "van"
+    },
+    {
+      "id": "TECH008",
+      "name": "Chen Wei Hao",
+      "start_location": {
+        "latitude": 3.115702,
+        "longitude": 101.621273,
+        "address": "SS2, Petaling Jaya"
+      },
+      "work_shift": {
+        "earliest": 480,
+        "latest": 1080
+      },
+      "break_window": {
+        "earliest": 720,
+        "latest": 780
+      },
+      "break_duration": 60,
+      "skills": ["electrical"],
+      "max_daily_orders": 15,
+      "max_travel_time": 400,
+      "hourly_rate": 63.0,
+      "vehicle_type": "van"
+    },
+    {
+      "id": "TECH009",
+      "name": "Fatimah Zahra",
+      "start_location": {
+        "latitude": 3.090347,
+        "longitude": 101.630716,
+        "address": "USJ 9, Subang Jaya"
+      },
+      "work_shift": {
+        "earliest": 480,
+        "latest": 1080
+      },
+      "break_window": {
+        "earliest": 720,
+        "latest": 780
+      },
+      "break_duration": 60,
+      "skills": ["electrical"],
+      "max_daily_orders": 15,
+      "max_travel_time": 400,
+      "hourly_rate": 77.0,
+      "vehicle_type": "van"
+    },
+    {
+      "id": "TECH010",
+      "name": "Kumar Selvam",
+      "start_location": {
+        "latitude": 3.103112,
+        "longitude": 101.634917,
+        "address": "USJ 6, Subang Jaya"
+      },
+      "work_shift": {
+        "earliest": 480,
+        "latest": 1080
+      },
+      "break_window": {
+        "earliest": 720,
+        "latest": 780
+      },
+      "break_duration": 60,
+      "skills": ["electrical"],
+      "max_daily_orders": 15,
+      "max_travel_time": 400,
+      "hourly_rate": 69.0,
+      "vehicle_type": "van"
+    }
+  ],
+  "work_orders": [
+    {
+      "id": "WO001",
+      "location": {
+        "latitude": 3.1073,
+        "longitude": 101.6063,
+        "address": "PJ Civic Centre"
+      },
+      "priority": "high",
+      "work_type": "repair",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "PJ City Council",
+      "description": "Electrical repair",
+      "estimated_value": 500.0
+    },
+    {
+      "id": "WO002",
+      "location": {
+        "latitude": 3.1072,
+        "longitude": 101.6221,
+        "address": "Section 17, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "maintenance",
+      "service_time": 45,
+      "required_skills": ["electrical"],
+      "customer_name": "PJ Trade Centre",
+      "description": "Electrical maintenance",
+      "estimated_value": 350.0
+    },
+    {
+      "id": "WO003",
+      "location": {
+        "latitude": 3.0698,
+        "longitude": 101.6050,
+        "address": "USJ 2, Subang Jaya"
+      },
+      "priority": "high",
+      "work_type": "repair",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "USJ Medical Centre",
+      "description": "Electrical repair",
+      "estimated_value": 600.0
+    },
+    {
+      "id": "WO004",
+      "location": {
+        "latitude": 3.1128,
+        "longitude": 101.5983,
+        "address": "Section 13, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "inspection",
+      "service_time": 60,
+      "required_skills": ["electrical"],
+      "customer_name": "PJ Community Centre",
+      "description": "Electrical inspection",
+      "estimated_value": 400.0
+    },
+    {
+      "id": "WO005",
+      "location": {
+        "latitude": 3.0936,
+        "longitude": 101.6423,
+        "address": "Taman Paramount"
+      },
+      "priority": "low",
+      "work_type": "repair",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "Paramount Shopping Centre",
+      "description": "Electrical repair",
+      "estimated_value": 300.0
+    },
+    {
+      "id": "WO006",
+      "location": {
+        "latitude": 3.1192,
+        "longitude": 101.6297,
+        "address": "SS2, Petaling Jaya"
+      },
+      "priority": "low",
+      "work_type": "maintenance",
+      "service_time": 20,
+      "required_skills": ["electrical"],
+      "customer_name": "SS2 Shopping Mall",
+      "description": "Electrical maintenance",
+      "estimated_value": 250.0
+    },
+    {
+      "id": "WO007",
+      "location": {
+        "latitude": 3.1054,
+        "longitude": 101.5986,
+        "address": "Section 14, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "repair",
+      "service_time": 40,
+      "required_skills": ["electrical"],
+      "customer_name": "PJ State Library",
+      "description": "Electrical repair",
+      "estimated_value": 350.0
+    },
+    {
+      "id": "WO008",
+      "location": {
+        "latitude": 3.0828,
+        "longitude": 101.6163,
+        "address": "Bandar Sunway"
+      },
+      "priority": "high",
+      "work_type": "emergency",
+      "service_time": 60,
+      "required_skills": ["electrical"],
+      "customer_name": "Sunway Pyramid",
+      "description": "Emergency electrical repair",
+      "estimated_value": 800.0
+    },
+    {
+      "id": "WO009",
+      "location": {
+        "latitude": 3.1336,
+        "longitude": 101.6414,
+        "address": "Damansara Heights"
+      },
+      "priority": "medium",
+      "work_type": "installation",
+      "service_time": 15,
+      "required_skills": ["electrical"],
+      "customer_name": "DH Plaza",
+      "description": "Electrical installation",
+      "estimated_value": 200.0
+    },
+    {
+      "id": "WO010",
+      "location": {
+        "latitude": 3.0633,
+        "longitude": 101.6369,
+        "address": "Bandar Sunway"
+      },
+      "priority": "medium",
+      "work_type": "maintenance",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "Sunway College",
+      "description": "Electrical maintenance",
+      "estimated_value": 300.0
+    },
+    {
+      "id": "WO011",
+      "location": {
+        "latitude": 3.1177,
+        "longitude": 101.5922,
+        "address": "Section 13, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "maintenance",
+      "service_time": 45,
+      "required_skills": ["electrical"],
+      "customer_name": "PJ Medical Centre",
+      "description": "Electrical maintenance",
+      "estimated_value": 400.0
+    },
+    {
+      "id": "WO012",
+      "location": {
+        "latitude": 3.0982,
+        "longitude": 101.6310,
+        "address": "SS1, Petaling Jaya"
+      },
+      "priority": "high",
+      "work_type": "repair",
+      "service_time": 25,
+      "required_skills": ["electrical"],
+      "customer_name": "SS1 Mall",
+      "description": "Electrical repair",
+      "estimated_value": 450.0
+    },
+    {
+      "id": "WO013",
+      "location": {
+        "latitude": 3.0746,
+        "longitude": 101.5847,
+        "address": "USJ 12, Subang Jaya"
+      },
+      "priority": "high",
+      "work_type": "installation",
+      "service_time": 50,
+      "required_skills": ["electrical"],
+      "customer_name": "USJ 12 Complex",
+      "description": "Electrical installation",
+      "estimated_value": 550.0
+    },
+    {
+      "id": "WO014",
+      "location": {
+        "latitude": 3.1265,
+        "longitude": 101.6369,
+        "address": "Damansara Heights"
+      },
+      "priority": "low",
+      "work_type": "inspection",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "DH Office Tower",
+      "description": "Electrical inspection",
+      "estimated_value": 300.0
+    },
+    {
+      "id": "WO015",
+      "location": {
+        "latitude": 3.1094,
+        "longitude": 101.6488,
+        "address": "Taman Paramount"
+      },
+      "priority": "medium",
+      "work_type": "repair",
+      "service_time": 40,
+      "required_skills": ["electrical"],
+      "customer_name": "Paramount Gardens",
+      "description": "Electrical repair",
+      "estimated_value": 400.0
+    },
+    {
+      "id": "WO016",
+      "location": {
+        "latitude": 3.0836,
+        "longitude": 101.6235,
+        "address": "Bandar Sunway"
+      },
+      "priority": "medium",
+      "work_type": "maintenance",
+      "service_time": 20,
+      "required_skills": ["electrical"],
+      "customer_name": "Sunway University",
+      "description": "Electrical maintenance",
+      "estimated_value": 250.0
+    },
+    {
+      "id": "WO017",
+      "location": {
+        "latitude": 3.1329,
+        "longitude": 101.5892,
+        "address": "Section 5, Petaling Jaya"
+      },
+      "priority": "high",
+      "work_type": "emergency",
+      "service_time": 60,
+      "required_skills": ["electrical"],
+      "customer_name": "PJ New Town",
+      "description": "Emergency electrical repair",
+      "estimated_value": 700.0
+    },
+    {
+      "id": "WO018",
+      "location": {
+        "latitude": 3.0888,
+        "longitude": 101.6094,
+        "address": "USJ 1, Subang Jaya"
+      },
+      "priority": "high",
+      "work_type": "repair",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "USJ One Mall",
+      "description": "Electrical repair",
+      "estimated_value": 400.0
+    },
+    {
+      "id": "WO019",
+      "location": {
+        "latitude": 3.1230,
+        "longitude": 101.6142,
+        "address": "Section 16, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "maintenance",
+      "service_time": 45,
+      "required_skills": ["electrical"],
+      "customer_name": "Amcorp Mall",
+      "description": "Electrical maintenance",
+      "estimated_value": 350.0
+    },
+    {
+      "id": "WO020",
+      "location": {
+        "latitude": 3.0721,
+        "longitude": 101.6314,
+        "address": "Bandar Sunway"
+      },
+      "priority": "medium",
+      "work_type": "repair",
+      "service_time": 25,
+      "required_skills": ["electrical"],
+      "customer_name": "Sunway Geo",
+      "description": "Electrical repair",
+      "estimated_value": 300.0
+    },
+    {
+      "id": "WO021",
+      "location": {
+        "latitude": 3.1153,
+        "longitude": 101.6376,
+        "address": "Taman Paramount"
+      },
+      "priority": "medium",
+      "work_type": "installation",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "Paramount Hotel",
+      "description": "Electrical installation",
+      "estimated_value": 350.0
+    },
+    {
+      "id": "WO022",
+      "location": {
+        "latitude": 3.0965,
+        "longitude": 101.5909,
+        "address": "SS3, Petaling Jaya"
+      },
+      "priority": "low",
+      "work_type": "inspection",
+      "service_time": 40,
+      "required_skills": ["electrical"],
+      "customer_name": "Giant SS3",
+      "description": "Electrical inspection",
+      "estimated_value": 250.0
+    },
+    {
+      "id": "WO023",
+      "location": {
+        "latitude": 3.1315,
+        "longitude": 101.6178,
+        "address": "Section 17, Petaling Jaya"
+      },
+      "priority": "high",
+      "work_type": "emergency",
+      "service_time": 60,
+      "required_skills": ["electrical"],
+      "customer_name": "KDU University",
+      "description": "Emergency electrical repair",
+      "estimated_value": 800.0
+    },
+    {
+      "id": "WO024",
+      "location": {
+        "latitude": 3.0783,
+        "longitude": 101.6484,
+        "address": "Taman Paramount"
+      },
+      "priority": "high",
+      "work_type": "repair",
+      "service_time": 20,
+      "required_skills": ["electrical"],
+      "customer_name": "Paramount Sports",
+      "description": "Electrical repair",
+      "estimated_value": 300.0
+    },
+    {
+      "id": "WO025",
+      "location": {
+        "latitude": 3.1108,
+        "longitude": 101.6251,
+        "address": "SS2, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "maintenance",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "SS2 Medical",
+      "description": "Electrical maintenance",
+      "estimated_value": 350.0
+    },
+    {
+      "id": "WO026",
+      "location": {
+        "latitude": 3.0926,
+        "longitude": 101.6011,
+        "address": "USJ 3, Subang Jaya"
+      },
+      "priority": "medium",
+      "work_type": "repair",
+      "service_time": 45,
+      "required_skills": ["electrical"],
+      "customer_name": "Subang Parade",
+      "description": "Electrical repair",
+      "estimated_value": 400.0
+    },
+    {
+      "id": "WO027",
+      "location": {
+        "latitude": 3.1274,
+        "longitude": 101.6432,
+        "address": "Damansara Heights"
+      },
+      "priority": "low",
+      "work_type": "inspection",
+      "service_time": 25,
+      "required_skills": ["electrical"],
+      "customer_name": "DH Clinic",
+      "description": "Electrical inspection",
+      "estimated_value": 200.0
+    },
+    {
+      "id": "WO028",
+      "location": {
+        "latitude": 3.0663,
+        "longitude": 101.6183,
+        "address": "Bandar Sunway"
+      },
+      "priority": "high",
+      "work_type": "installation",
+      "service_time": 50,
+      "required_skills": ["electrical"],
+      "customer_name": "Sunway Medical",
+      "description": "Electrical installation",
+      "estimated_value": 600.0
+    },
+    {
+      "id": "WO029",
+      "location": {
+        "latitude": 3.1202,
+        "longitude": 101.5968,
+        "address": "Section 14, Petaling Jaya"
+      },
+      "priority": "high",
+      "work_type": "repair",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "PJ Arts Centre",
+      "description": "Electrical repair",
+      "estimated_value": 450.0
+    },
+    {
+      "id": "WO030",
+      "location": {
+        "latitude": 3.0879,
+        "longitude": 101.6361,
+        "address": "SS1, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "maintenance",
+      "service_time": 40,
+      "required_skills": ["electrical"],
+      "customer_name": "Atria Gallery",
+      "description": "Electrical maintenance",
+      "estimated_value": 350.0
+    },
+    {
+      "id": "WO031",
+      "location": {
+        "latitude": 3.1249,
+        "longitude": 101.6088,
+        "address": "Section 15, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "repair",
+      "service_time": 20,
+      "required_skills": ["electrical"],
+      "customer_name": "KPJ Hospital",
+      "description": "Electrical repair",
+      "estimated_value": 400.0
+    },
+    {
+      "id": "WO032",
+      "location": {
+        "latitude": 3.0711,
+        "longitude": 101.6270,
+        "address": "Bandar Sunway"
+      },
+      "priority": "low",
+      "work_type": "inspection",
+      "service_time": 60,
+      "required_skills": ["electrical"],
+      "customer_name": "Sunway Lagoon",
+      "description": "Electrical inspection",
+      "estimated_value": 300.0
+    },
+    {
+      "id": "WO033",
+      "location": {
+        "latitude": 3.1167,
+        "longitude": 101.6452,
+        "address": "Taman Paramount"
+      },
+      "priority": "high",
+      "work_type": "emergency",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "Paramount Mall",
+      "description": "Emergency electrical repair",
+      "estimated_value": 500.0
+    },
+    {
+      "id": "WO034",
+      "location": {
+        "latitude": 3.0945,
+        "longitude": 101.5939,
+        "address": "SS4, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "maintenance",
+      "service_time": 45,
+      "required_skills": ["electrical"],
+      "customer_name": "SS4 Apartments",
+      "description": "Electrical maintenance",
+      "estimated_value": 300.0
+    },
+    {
+      "id": "WO035",
+      "location": {
+        "latitude": 3.1291,
+        "longitude": 101.6206,
+        "address": "Section 17, Petaling Jaya"
+      },
+      "priority": "high",
+      "work_type": "repair",
+      "service_time": 25,
+      "required_skills": ["electrical"],
+      "customer_name": "PJ Convention",
+      "description": "Electrical repair",
+      "estimated_value": 400.0
+    },
+    {
+      "id": "WO036",
+      "location": {
+        "latitude": 3.0765,
+        "longitude": 101.6398,
+        "address": "SS1, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "installation",
+      "service_time": 50,
+      "required_skills": ["electrical"],
+      "customer_name": "SS1 Centre",
+      "description": "Electrical installation",
+      "estimated_value": 450.0
+    },
+    {
+      "id": "WO037",
+      "location": {
+        "latitude": 3.1124,
+        "longitude": 101.6046,
+        "address": "Section 13, Petaling Jaya"
+      },
+      "priority": "low",
+      "work_type": "inspection",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "PJ Hospital",
+      "description": "Electrical inspection",
+      "estimated_value": 250.0
+    },
+    {
+      "id": "WO038",
+      "location": {
+        "latitude": 3.0903,
+        "longitude": 101.6280,
+        "address": "Bandar Sunway"
+      },
+      "priority": "high",
+      "work_type": "repair",
+      "service_time": 40,
+      "required_skills": ["electrical"],
+      "customer_name": "Sunway Resort",
+      "description": "Electrical repair",
+      "estimated_value": 500.0
+    },
+    {
+      "id": "WO039",
+      "location": {
+        "latitude": 3.1251,
+        "longitude": 101.6123,
+        "address": "Section 15, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "maintenance",
+      "service_time": 20,
+      "required_skills": ["electrical"],
+      "customer_name": "Assunta Hospital",
+      "description": "Electrical maintenance",
+      "estimated_value": 350.0
+    },
+    {
+      "id": "WO040",
+      "location": {
+        "latitude": 3.0690,
+        "longitude": 101.6092,
+        "address": "USJ 2, Subang Jaya"
+      },
+      "priority": "high",
+      "work_type": "emergency",
+      "service_time": 60,
+      "required_skills": ["electrical"],
+      "customer_name": "USJ 2 Centre",
+      "description": "Emergency electrical repair",
+      "estimated_value": 700.0
+    },
+    {
+      "id": "WO041",
+      "location": {
+        "latitude": 3.1195,
+        "longitude": 101.6341,
+        "address": "SS2, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "repair",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "SS2 Bank",
+      "description": "Electrical repair",
+      "estimated_value": 400.0
+    },
+    {
+      "id": "WO042",
+      "location": {
+        "latitude": 3.0854,
+        "longitude": 101.5963,
+        "address": "USJ 8, Subang Jaya"
+      },
+      "priority": "low",
+      "work_type": "maintenance",
+      "service_time": 45,
+      "required_skills": ["electrical"],
+      "customer_name": "USJ 8 Complex",
+      "description": "Electrical maintenance",
+      "estimated_value": 250.0
+    },
+    {
+      "id": "WO043",
+      "location": {
+        "latitude": 3.1304,
+        "longitude": 101.6321,
+        "address": "Damansara Heights"
+      },
+      "priority": "high",
+      "work_type": "installation",
+      "service_time": 25,
+      "required_skills": ["electrical"],
+      "customer_name": "DH Business Park",
+      "description": "Electrical installation",
+      "estimated_value": 450.0
+    },
+    {
+      "id": "WO044",
+      "location": {
+        "latitude": 3.0737,
+        "longitude": 101.6453,
+        "address": "Taman Paramount"
+      },
+      "priority": "medium",
+      "work_type": "repair",
+      "service_time": 50,
+      "required_skills": ["electrical"],
+      "customer_name": "Paramount Factory",
+      "description": "Electrical repair",
+      "estimated_value": 550.0
+    },
+    {
+      "id": "WO045",
+      "location": {
+        "latitude": 3.1142,
+        "longitude": 101.6154,
+        "address": "Section 16, Petaling Jaya"
+      },
+      "priority": "high",
+      "work_type": "maintenance",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "Amcorp Trade",
+      "description": "Electrical maintenance",
+      "estimated_value": 400.0
+    },
+    {
+      "id": "WO046",
+      "location": {
+        "latitude": 3.0915,
+        "longitude": 101.6397,
+        "address": "SS1, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "inspection",
+      "service_time": 40,
+      "required_skills": ["electrical"],
+      "customer_name": "SS1 Office",
+      "description": "Electrical inspection",
+      "estimated_value": 300.0
+    },
+    {
+      "id": "WO047",
+      "location": {
+        "latitude": 3.1279,
+        "longitude": 101.5920,
+        "address": "Section 5, Petaling Jaya"
+      },
+      "priority": "low",
+      "work_type": "maintenance",
+      "service_time": 20,
+      "required_skills": ["electrical"],
+      "customer_name": "PJ Fire Station",
+      "description": "Electrical maintenance",
+      "estimated_value": 200.0
+    },
+    {
+      "id": "WO048",
+      "location": {
+        "latitude": 3.0672,
+        "longitude": 101.6234,
+        "address": "Bandar Sunway"
+      },
+      "priority": "high",
+      "work_type": "emergency",
+      "service_time": 60,
+      "required_skills": ["electrical"],
+      "customer_name": "Sunway Velocity",
+      "description": "Emergency electrical repair",
+      "estimated_value": 800.0
+    },
+    {
+      "id": "WO049",
+      "location": {
+        "latitude": 3.1186,
+        "longitude": 101.6466,
+        "address": "Taman Paramount"
+      },
+      "priority": "medium",
+      "work_type": "repair",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "Paramount Plaza",
+      "description": "Electrical repair",
+      "estimated_value": 350.0
+    },
+    {
+      "id": "WO050",
+      "location": {
+        "latitude": 3.0888,
+        "longitude": 101.6013,
+        "address": "USJ 1, Subang Jaya"
+      },
+      "priority": "high",
+      "work_type": "installation",
+      "service_time": 45,
+      "required_skills": ["electrical"],
+      "customer_name": "USJ Summit",
+      "description": "Electrical installation",
+      "estimated_value": 500.0
+    },
+    {
+      "id": "WO051",
+      "location": {
+        "latitude": 3.1232,
+        "longitude": 101.6268,
+        "address": "SS2, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "maintenance",
+      "service_time": 25,
+      "required_skills": ["electrical"],
+      "customer_name": "SS2 Tower",
+      "description": "Electrical maintenance",
+      "estimated_value": 300.0
+    },
+    {
+      "id": "WO052",
+      "location": {
+        "latitude": 3.0715,
+        "longitude": 101.6172,
+        "address": "Bandar Sunway"
+      },
+      "priority": "low",
+      "work_type": "inspection",
+      "service_time": 50,
+      "required_skills": ["electrical"],
+      "customer_name": "Sunway College",
+      "description": "Electrical inspection",
+      "estimated_value": 250.0
+    },
+    {
+      "id": "WO053",
+      "location": {
+        "latitude": 3.1131,
+        "longitude": 101.6371,
+        "address": "SS1, Petaling Jaya"
+      },
+      "priority": "high",
+      "work_type": "repair",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "SS1 Shopping",
+      "description": "Electrical repair",
+      "estimated_value": 400.0
+    },
+    {
+      "id": "WO054",
+      "location": {
+        "latitude": 3.0964,
+        "longitude": 101.5884,
+        "address": "SS5, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "maintenance",
+      "service_time": 40,
+      "required_skills": ["electrical"],
+      "customer_name": "SS5 Restaurant",
+      "description": "Electrical maintenance",
+      "estimated_value": 350.0
+    },
+    {
+      "id": "WO055",
+      "location": {
+        "latitude": 3.1344,
+        "longitude": 101.6187,
+        "address": "Section 17, Petaling Jaya"
+      },
+      "priority": "high",
+      "work_type": "emergency",
+      "service_time": 20,
+      "required_skills": ["electrical"],
+      "customer_name": "PJ International",
+      "description": "Emergency electrical repair",
+      "estimated_value": 600.0
+    },
+    {
+      "id": "WO056",
+      "location": {
+        "latitude": 3.0793,
+        "longitude": 101.6359,
+        "address": "Bandar Sunway"
+      },
+      "priority": "medium",
+      "work_type": "installation",
+      "service_time": 60,
+      "required_skills": ["electrical"],
+      "customer_name": "Sunway Golf",
+      "description": "Electrical installation",
+      "estimated_value": 550.0
+    },
+    {
+      "id": "WO057",
+      "location": {
+        "latitude": 3.1090,
+        "longitude": 101.6135,
+        "address": "Section 14, Petaling Jaya"
+      },
+      "priority": "low",
+      "work_type": "inspection",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "PJ Central",
+      "description": "Electrical inspection",
+      "estimated_value": 250.0
+    },
+    {
+      "id": "WO058",
+      "location": {
+        "latitude": 3.0934,
+        "longitude": 101.6275,
+        "address": "USJ 17, Subang Jaya"
+      },
+      "priority": "high",
+      "work_type": "repair",
+      "service_time": 45,
+      "required_skills": ["electrical"],
+      "customer_name": "USJ 17 Gym",
+      "description": "Electrical repair",
+      "estimated_value": 450.0
+    },
+    {
+      "id": "WO059",
+      "location": {
+        "latitude": 3.1318,
+        "longitude": 101.5998,
+        "address": "Section 6, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "maintenance",
+      "service_time": 25,
+      "required_skills": ["electrical"],
+      "customer_name": "PJ Wholesale",
+      "description": "Electrical maintenance",
+      "estimated_value": 300.0
+    },
+    {
+      "id": "WO060",
+      "location": {
+        "latitude": 3.0761,
+        "longitude": 101.6116,
+        "address": "USJ 18, Subang Jaya"
+      },
+      "priority": "medium",
+      "work_type": "repair",
+      "service_time": 50,
+      "required_skills": ["electrical"],
+      "customer_name": "USJ 18 Car Wash",
+      "description": "Electrical repair",
+      "estimated_value": 400.0
+    },
+    {
+      "id": "WO061",
+      "location": {
+        "latitude": 3.1159,
+        "longitude": 101.6408,
+        "address": "Taman Paramount"
+      },
+      "priority": "high",
+      "work_type": "installation",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "Paramount Industrial",
+      "description": "Electrical installation",
+      "estimated_value": 500.0
+    },
+    {
+      "id": "WO062",
+      "location": {
+        "latitude": 3.0868,
+        "longitude": 101.5941,
+        "address": "USJ 5, Subang Jaya"
+      },
+      "priority": "low",
+      "work_type": "maintenance",
+      "service_time": 40,
+      "required_skills": ["electrical"],
+      "customer_name": "USJ 5 Hall",
+      "description": "Electrical maintenance",
+      "estimated_value": 250.0
+    },
+    {
+      "id": "WO063",
+      "location": {
+        "latitude": 3.1287,
+        "longitude": 101.6306,
+        "address": "Damansara Heights"
+      },
+      "priority": "high",
+      "work_type": "emergency",
+      "service_time": 20,
+      "required_skills": ["electrical"],
+      "customer_name": "DH Shopping",
+      "description": "Emergency electrical repair",
+      "estimated_value": 700.0
+    },
+    {
+      "id": "WO064",
+      "location": {
+        "latitude": 3.0686,
+        "longitude": 101.6390,
+        "address": "SS1, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "repair",
+      "service_time": 60,
+      "required_skills": ["electrical"],
+      "customer_name": "SS1 Kindergarten",
+      "description": "Electrical repair",
+      "estimated_value": 350.0
+    },
+    {
+      "id": "WO065",
+      "location": {
+        "latitude": 3.1172,
+        "longitude": 101.6212,
+        "address": "Section 16, Petaling Jaya"
+      },
+      "priority": "high",
+      "work_type": "maintenance",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "Amcorp Plaza",
+      "description": "Electrical maintenance",
+      "estimated_value": 400.0
+    },
+    {
+      "id": "WO066",
+      "location": {
+        "latitude": 3.0906,
+        "longitude": 101.6101,
+        "address": "USJ 13, Subang Jaya"
+      },
+      "priority": "medium",
+      "work_type": "inspection",
+      "service_time": 45,
+      "required_skills": ["electrical"],
+      "customer_name": "USJ 13 Clinic",
+      "description": "Electrical inspection",
+      "estimated_value": 300.0
+    },
+    {
+      "id": "WO067",
+      "location": {
+        "latitude": 3.1334,
+        "longitude": 101.6254,
+        "address": "Section 17, Petaling Jaya"
+      },
+      "priority": "low",
+      "work_type": "maintenance",
+      "service_time": 25,
+      "required_skills": ["electrical"],
+      "customer_name": "PJ Cultural",
+      "description": "Electrical maintenance",
+      "estimated_value": 250.0
+    },
+    {
+      "id": "WO068",
+      "location": {
+        "latitude": 3.0722,
+        "longitude": 101.6349,
+        "address": "Bandar Sunway"
+      },
+      "priority": "high",
+      "work_type": "installation",
+      "service_time": 50,
+      "required_skills": ["electrical"],
+      "customer_name": "Sunway South",
+      "description": "Electrical installation",
+      "estimated_value": 600.0
+    },
+    {
+      "id": "WO069",
+      "location": {
+        "latitude": 3.1201,
+        "longitude": 101.6028,
+        "address": "Section 11, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "repair",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "PJ Town Hall",
+      "description": "Electrical repair",
+      "estimated_value": 400.0
+    },
+    {
+      "id": "WO070",
+      "location": {
+        "latitude": 3.0884,
+        "longitude": 101.6441,
+        "address": "Taman Paramount"
+      },
+      "priority": "high",
+      "work_type": "emergency",
+      "service_time": 40,
+      "required_skills": ["electrical"],
+      "customer_name": "Paramount Data",
+      "description": "Emergency electrical repair",
+      "estimated_value": 800.0
+    },
+    {
+      "id": "WO071",
+      "location": {
+        "latitude": 3.1272,
+        "longitude": 101.5955,
+        "address": "Section 7, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "maintenance",
+      "service_time": 20,
+      "required_skills": ["electrical"],
+      "customer_name": "PJ Methodist",
+      "description": "Electrical maintenance",
+      "estimated_value": 250.0
+    },
+    {
+      "id": "WO072",
+      "location": {
+        "latitude": 3.0681,
+        "longitude": 101.6139,
+        "address": "USJ 19, Subang Jaya"
+      },
+      "priority": "low",
+      "work_type": "inspection",
+      "service_time": 60,
+      "required_skills": ["electrical"],
+      "customer_name": "USJ 19 Park",
+      "description": "Electrical inspection",
+      "estimated_value": 200.0
+    },
+    {
+      "id": "WO073",
+      "location": {
+        "latitude": 3.1147,
+        "longitude": 101.6323,
+        "address": "SS2, Petaling Jaya"
+      },
+      "priority": "high",
+      "work_type": "repair",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "SS2 Office",
+      "description": "Electrical repair",
+      "estimated_value": 450.0
+    },
+    {
+      "id": "WO074",
+      "location": {
+        "latitude": 3.0951,
+        "longitude": 101.6471,
+        "address": "Taman Paramount"
+      },
+      "priority": "medium",
+      "work_type": "installation",
+      "service_time": 45,
+      "required_skills": ["electrical"],
+      "customer_name": "Paramount Tech",
+      "description": "Electrical installation",
+      "estimated_value": 500.0
+    },
+    {
+      "id": "WO075",
+      "location": {
+        "latitude": 3.1305,
+        "longitude": 101.6083,
+        "address": "Section 15, Petaling Jaya"
+      },
+      "priority": "high",
+      "work_type": "maintenance",
+      "service_time": 25,
+      "required_skills": ["electrical"],
+      "customer_name": "PJ Immigration",
+      "description": "Electrical maintenance",
+      "estimated_value": 350.0
+    },
+    {
+      "id": "WO076",
+      "location": {
+        "latitude": 3.0755,
+        "longitude": 101.6226,
+        "address": "Bandar Sunway"
+      },
+      "priority": "medium",
+      "work_type": "repair",
+      "service_time": 50,
+      "required_skills": ["electrical"],
+      "customer_name": "Sunway Nexis",
+      "description": "Electrical repair",
+      "estimated_value": 400.0
+    },
+    {
+      "id": "WO077",
+      "location": {
+        "latitude": 3.1180,
+        "longitude": 101.6389,
+        "address": "SS1, Petaling Jaya"
+      },
+      "priority": "low",
+      "work_type": "inspection",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "SS1 Library",
+      "description": "Electrical inspection",
+      "estimated_value": 200.0
+    },
+    {
+      "id": "WO078",
+      "location": {
+        "latitude": 3.0923,
+        "longitude": 101.5903,
+        "address": "SS7, Petaling Jaya"
+      },
+      "priority": "high",
+      "work_type": "repair",
+      "service_time": 40,
+      "required_skills": ["electrical"],
+      "customer_name": "SS7 Mosque",
+      "description": "Electrical repair",
+      "estimated_value": 350.0
+    },
+    {
+      "id": "WO079",
+      "location": {
+        "latitude": 3.1353,
+        "longitude": 101.6257,
+        "address": "Damansara Heights"
+      },
+      "priority": "medium",
+      "work_type": "emergency",
+      "service_time": 20,
+      "required_skills": ["electrical"],
+      "customer_name": "DH Financial",
+      "description": "Emergency electrical repair",
+      "estimated_value": 600.0
+    },
+    {
+      "id": "WO080",
+      "location": {
+        "latitude": 3.0707,
+        "longitude": 101.6393,
+        "address": "Bandar Sunway"
+      },
+      "priority": "high",
+      "work_type": "installation",
+      "service_time": 60,
+      "required_skills": ["electrical"],
+      "customer_name": "Sunway Manufacturing",
+      "description": "Electrical installation",
+      "estimated_value": 700.0
+    },
+    {
+      "id": "WO081",
+      "location": {
+        "latitude": 3.1216,
+        "longitude": 101.6107,
+        "address": "Section 14, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "maintenance",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "PJ Live Arts",
+      "description": "Electrical maintenance",
+      "estimated_value": 300.0
+    },
+    {
+      "id": "WO082",
+      "location": {
+        "latitude": 3.0897,
+        "longitude": 101.6164,
+        "address": "USJ 15, Subang Jaya"
+      },
+      "priority": "low",
+      "work_type": "inspection",
+      "service_time": 45,
+      "required_skills": ["electrical"],
+      "customer_name": "Empire Gallery",
+      "description": "Electrical inspection",
+      "estimated_value": 250.0
+    },
+    {
+      "id": "WO083",
+      "location": {
+        "latitude": 3.1325,
+        "longitude": 101.6486,
+        "address": "Taman Paramount"
+      },
+      "priority": "high",
+      "work_type": "repair",
+      "service_time": 25,
+      "required_skills": ["electrical"],
+      "customer_name": "Paramount University",
+      "description": "Electrical repair",
+      "estimated_value": 500.0
+    },
+    {
+      "id": "WO084",
+      "location": {
+        "latitude": 3.0780,
+        "longitude": 101.5935,
+        "address": "USJ 22, Subang Jaya"
+      },
+      "priority": "medium",
+      "work_type": "installation",
+      "service_time": 50,
+      "required_skills": ["electrical"],
+      "customer_name": "USJ 22 Office",
+      "description": "Electrical installation",
+      "estimated_value": 450.0
+    },
+    {
+      "id": "WO085",
+      "location": {
+        "latitude": 3.1258,
+        "longitude": 101.6348,
+        "address": "SS2, Petaling Jaya"
+      },
+      "priority": "high",
+      "work_type": "maintenance",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "SS2 Dental",
+      "description": "Electrical maintenance",
+      "estimated_value": 400.0
+    },
+    {
+      "id": "WO086",
+      "location": {
+        "latitude": 3.0674,
+        "longitude": 101.6196,
+        "address": "Bandar Sunway"
+      },
+      "priority": "medium",
+      "work_type": "repair",
+      "service_time": 40,
+      "required_skills": ["electrical"],
+      "customer_name": "Sunway Geo",
+      "description": "Electrical repair",
+      "estimated_value": 350.0
+    },
+    {
+      "id": "WO087",
+      "location": {
+        "latitude": 3.1137,
+        "longitude": 101.6016,
+        "address": "Section 10, Petaling Jaya"
+      },
+      "priority": "low",
+      "work_type": "inspection",
+      "service_time": 20,
+      "required_skills": ["electrical"],
+      "customer_name": "PJ Business",
+      "description": "Electrical inspection",
+      "estimated_value": 200.0
+    },
+    {
+      "id": "WO088",
+      "location": {
+        "latitude": 3.0977,
+        "longitude": 101.6459,
+        "address": "Taman Paramount"
+      },
+      "priority": "high",
+      "work_type": "emergency",
+      "service_time": 60,
+      "required_skills": ["electrical"],
+      "customer_name": "Paramount Hospital",
+      "description": "Emergency electrical repair",
+      "estimated_value": 900.0
+    },
+    {
+      "id": "WO089",
+      "location": {
+        "latitude": 3.1262,
+        "longitude": 101.5969,
+        "address": "Section 8, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "maintenance",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "PJ Recreation",
+      "description": "Electrical maintenance",
+      "estimated_value": 300.0
+    },
+    {
+      "id": "WO090",
+      "location": {
+        "latitude": 3.0811,
+        "longitude": 101.6284,
+        "address": "USJ 28, Subang Jaya"
+      },
+      "priority": "high",
+      "work_type": "installation",
+      "service_time": 45,
+      "required_skills": ["electrical"],
+      "customer_name": "USJ 28 Retail",
+      "description": "Electrical installation",
+      "estimated_value": 450.0
+    },
+    {
+      "id": "WO091",
+      "location": {
+        "latitude": 3.1219,
+        "longitude": 101.6378,
+        "address": "SS1, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "repair",
+      "service_time": 25,
+      "required_skills": ["electrical"],
+      "customer_name": "SS1 Community",
+      "description": "Electrical repair",
+      "estimated_value": 300.0
+    },
+    {
+      "id": "WO092",
+      "location": {
+        "latitude": 3.0650,
+        "longitude": 101.6127,
+        "address": "USJ 30, Subang Jaya"
+      },
+      "priority": "low",
+      "work_type": "inspection",
+      "service_time": 50,
+      "required_skills": ["electrical"],
+      "customer_name": "USJ 30 Plant",
+      "description": "Electrical inspection",
+      "estimated_value": 250.0
+    },
+    {
+      "id": "WO093",
+      "location": {
+        "latitude": 3.1115,
+        "longitude": 101.6241,
+        "address": "Section 12, Petaling Jaya"
+      },
+      "priority": "high",
+      "work_type": "repair",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "PJ Central Post",
+      "description": "Electrical repair",
+      "estimated_value": 400.0
+    },
+    {
+      "id": "WO094",
+      "location": {
+        "latitude": 3.0959,
+        "longitude": 101.5918,
+        "address": "SS8, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "maintenance",
+      "service_time": 40,
+      "required_skills": ["electrical"],
+      "customer_name": "SS8 School",
+      "description": "Electrical maintenance",
+      "estimated_value": 350.0
+    },
+    {
+      "id": "WO095",
+      "location": {
+        "latitude": 3.1369,
+        "longitude": 101.6172,
+        "address": "Section 17, Petaling Jaya"
+      },
+      "priority": "high",
+      "work_type": "emergency",
+      "service_time": 20,
+      "required_skills": ["electrical"],
+      "customer_name": "PJ General Hospital",
+      "description": "Emergency electrical repair",
+      "estimated_value": 800.0
+    },
+    {
+      "id": "WO096",
+      "location": {
+        "latitude": 3.0771,
+        "longitude": 101.6407,
+        "address": "Bandar Sunway"
+      },
+      "priority": "medium",
+      "work_type": "installation",
+      "service_time": 60,
+      "required_skills": ["electrical"],
+      "customer_name": "Sunway Giza",
+      "description": "Electrical installation",
+      "estimated_value": 500.0
+    },
+    {
+      "id": "WO097",
+      "location": {
+        "latitude": 3.1170,
+        "longitude": 101.6055,
+        "address": "Section 9, Petaling Jaya"
+      },
+      "priority": "low",
+      "work_type": "inspection",
+      "service_time": 30,
+      "required_skills": ["electrical"],
+      "customer_name": "PJ Youth Centre",
+      "description": "Electrical inspection",
+      "estimated_value": 200.0
+    },
+    {
+      "id": "WO098",
+      "location": {
+        "latitude": 3.0942,
+        "longitude": 101.6330,
+        "address": "USJ 29, Subang Jaya"
+      },
+      "priority": "high",
+      "work_type": "repair",
+      "service_time": 45,
+      "required_skills": ["electrical"],
+      "customer_name": "USJ 29 Storage",
+      "description": "Electrical repair",
+      "estimated_value": 450.0
+    },
+    {
+      "id": "WO099",
+      "location": {
+        "latitude": 3.1340,
+        "longitude": 101.6119,
+        "address": "Section 15, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "maintenance",
+      "service_time": 25,
+      "required_skills": ["electrical"],
+      "customer_name": "PJ Courthouse",
+      "description": "Electrical maintenance",
+      "estimated_value": 350.0
+    },
+    {
+      "id": "WO100",
+      "location": {
+        "latitude": 3.0727,
+        "longitude": 101.6212,
+        "address": "Bandar Sunway"
+      },
+      "priority": "high",
+      "work_type": "installation",
+      "service_time": 50,
+      "required_skills": ["electrical"],
+      "customer_name": "Sunway Monash",
+      "description": "Electrical installation",
+      "estimated_value": 600.0
+    }
+  ],
+  "config": {
+    "time_limit": 5
+  }
+}

@@ -1,14 +1,23 @@
 """
 cuOpt-based solver for technician-workorder optimization
-ULTRA HIGH PERFORMANCE VERSION
+ULTRA HIGH PERFORMANCE VERSION WITH CUDA STREAMS
 Following the cuOpt service team routing notebook patterns with aggressive optimizations
+and concurrent execution using CUDA streams
 """
 
 import logging
 import time
 import cudf
 import numpy as np
-from typing import List, Dict, Any, Optional, Set
+import asyncio
+import threading
+from typing import List, Dict, Any, Optional, Set, Tuple, Union
+from concurrent.futures import ThreadPoolExecutor, Future, as_completed
+from queue import Queue, PriorityQueue, Empty
+from dataclasses import dataclass
+from threading import Lock, Event
+from contextlib import contextmanager
+import uuid
 
 # Import cuOpt with proper error handling
 cuopt_available = False
@@ -20,26 +29,41 @@ try:
     cuopt_available = True
     print("✅ cuOpt routing imported successfully")
 
-    # Initialize GPU memory management
+    # Initialize GPU memory management with enhanced pool for concurrent execution
     try:
         import rmm
+        from config import get_config
+        config = get_config()
+        memory_config = config['cuopt']['memory_management']
+
         rmm.reinitialize(
             pool_allocator=True,
-            initial_pool_size=2**30,  # 1GB initial pool
-            maximum_pool_size=8*2**30   # 8GB maximum
+            initial_pool_size=memory_config['initial_pool_size'],
+            maximum_pool_size=memory_config['maximum_pool_size']
         )
-        print("✅ GPU memory pool initialized")
+        print("✅ GPU memory pool initialized for concurrent execution")
     except ImportError:
         print("⚠️ rmm not available, using default GPU memory management")
     except Exception as e:
         print(f"⚠️ GPU memory pool initialization failed: {e}")
+
+    # Initialize CUDA streams for concurrent execution
+    try:
+        import cupy as cp
+        concurrent_config = get_config()['cuopt']['concurrent_execution']
+        if concurrent_config['enabled']:
+            print(f"🚀 Initializing {concurrent_config['cuda_streams']} CUDA streams...")
+            # We'll create streams in the ConcurrentSolverManager
+            print("✅ CUDA streams support ready")
+    except ImportError:
+        print("⚠️ CuPy not available, CUDA streams will be limited")
 
 except ImportError as e:
     print(f"❌ cuOpt import failed: {e}")
     print("⚠️ Solver will not be available")
     cuopt_available = False
 
-from config import CONFIG, get_optimal_time_limit, should_skip_complex_constraints
+from config import CONFIG, get_optimal_time_limit, should_skip_complex_constraints, get_concurrent_solver_config
 from core.models import (
     OptimizationProblem, OptimizationSolution, TechnicianRoute, Assignment,
     Technician, WorkOrder, Priority, SolutionStatus, DistanceMatrix
@@ -54,14 +78,430 @@ class SolverError(Exception):
     pass
 
 
+@dataclass
+class SolverRequest:
+    """Request wrapper for solver queue"""
+    request_id: str
+    problem: OptimizationProblem
+    config: Optional[Dict[str, Any]]
+    priority: int = 1  # Lower numbers = higher priority
+    created_at: float = None
+
+    def __post_init__(self):
+        if self.created_at is None:
+            self.created_at = time.time()
+
+    def __lt__(self, other):
+        # For priority queue ordering
+        return self.priority < other.priority
+
+
+@dataclass
+class SolverResult:
+    """Result wrapper for solver responses"""
+    request_id: str
+    solution: OptimizationSolution
+    processing_time: float
+    solver_id: int
+    success: bool = True
+    error: Optional[str] = None
+
+
+class CUDAStreamManager:
+    """Manages CUDA streams for concurrent cuOpt execution"""
+
+    def __init__(self, num_streams: int):
+        self.num_streams = num_streams
+        self.streams = []
+        self.stream_lock = Lock()
+        self.available_streams = Queue()
+
+        try:
+            import cupy as cp
+            # Create CUDA streams
+            for i in range(num_streams):
+                stream = cp.cuda.Stream(non_blocking=True)
+                self.streams.append(stream)
+                self.available_streams.put(i)
+            print(f"✅ Created {num_streams} CUDA streams")
+        except Exception as e:
+            print(f"⚠️ Failed to create CUDA streams: {e}")
+            # Fallback to None streams
+            for i in range(num_streams):
+                self.streams.append(None)
+                self.available_streams.put(i)
+
+    @contextmanager
+    def get_stream(self, timeout: float = 30.0):
+        """Get an available CUDA stream"""
+        try:
+            stream_id = self.available_streams.get(timeout=timeout)
+            stream = self.streams[stream_id]
+            try:
+                yield stream_id, stream
+            finally:
+                self.available_streams.put(stream_id)
+        except Empty:
+            raise SolverError(f"No CUDA streams available within {timeout}s")
+
+    def synchronize_all(self):
+        """Synchronize all CUDA streams"""
+        try:
+            import cupy as cp
+            for stream in self.streams:
+                if stream is not None:
+                    stream.synchronize()
+        except Exception as e:
+            logger.warning(f"Failed to synchronize CUDA streams: {e}")
+
+
+class ConcurrentSolverManager:
+    """Manages multiple concurrent cuOpt solver instances with CUDA streams"""
+
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        """Initialize concurrent solver manager"""
+        self.config = CONFIG.copy()
+        if config:
+            for key, value in config.items():
+                if key in self.config and isinstance(self.config[key], dict) and isinstance(value, dict):
+                    self.config[key].update(value)
+                else:
+                    self.config[key] = value
+
+        self.concurrent_config = get_concurrent_solver_config()
+        self.cuopt_config = self.config['cuopt']
+        self.business_config = self.config['business']
+        self.optimization_config = self.config['optimization']
+
+        if not cuopt_available:
+            logger.error("cuOpt is not available. Cannot initialize concurrent solver.")
+            raise RuntimeError("cuOpt is not available. Please check cuOpt installation.")
+
+        # Initialize concurrent execution components
+        self.max_solvers = self.concurrent_config['max_concurrent_solvers']
+        self.cuda_streams = CUDAStreamManager(self.concurrent_config['cuda_streams'])
+
+        # Request queue and processing
+        self.request_queue = PriorityQueue()
+        self.results = {}  # request_id -> SolverResult
+        self.active_requests = {}  # request_id -> Future
+
+        # Thread pool for solver execution
+        self.executor = ThreadPoolExecutor(
+            max_workers=self.max_solvers,
+            thread_name_prefix="cuopt_solver"
+        )
+
+        # Solver assignment management
+        self.solver_counter = 0
+        self.solver_assignment_lock = Lock()
+        self.busy_solvers = set()  # Track which solvers are currently busy
+
+        # Monitoring and statistics
+        self.stats = {
+            'total_requests': 0,
+            'completed_requests': 0,
+            'failed_requests': 0,
+            'active_solvers': 0,
+            'average_processing_time': 0.0,
+            'start_time': time.time(),
+            'solver_usage': {i: 0 for i in range(self.max_solvers)}  # Track usage per solver
+        }
+        self.stats_lock = Lock()
+
+        # Solver instances (one per thread/stream)
+        self.solver_instances = {}
+        self.solver_lock = Lock()
+
+        logger.info(f"Initialized ConcurrentSolverManager with {self.max_solvers} solvers and {self.concurrent_config['cuda_streams']} CUDA streams")
+        print("✅ ConcurrentSolverManager initialized")
+        print(f"   🚀 Max concurrent solvers: {self.max_solvers}")
+        print(f"   🎯 CUDA streams: {self.concurrent_config['cuda_streams']}")
+        print(f"   💾 Memory per solver: {self.concurrent_config['memory_pool_per_solver']}MB")
+
+    def _get_next_solver_id(self) -> int:
+        """Get the next available solver ID using round-robin assignment"""
+        with self.solver_assignment_lock:
+            # Round-robin assignment
+            solver_id = self.solver_counter % self.max_solvers
+            self.solver_counter += 1
+
+            # Track solver usage
+            with self.stats_lock:
+                self.stats['solver_usage'][solver_id] += 1
+
+            return solver_id
+
+    def _mark_solver_busy(self, solver_id: int):
+        """Mark a solver as busy"""
+        with self.solver_assignment_lock:
+            self.busy_solvers.add(solver_id)
+
+    def _mark_solver_free(self, solver_id: int):
+        """Mark a solver as free"""
+        with self.solver_assignment_lock:
+            self.busy_solvers.discard(solver_id)
+
+    def get_solver_instance(self, solver_id: int) -> 'TechnicianWorkOrderSolver':
+        """Get or create a solver instance for the given solver ID"""
+        with self.solver_lock:
+            if solver_id not in self.solver_instances:
+                self.solver_instances[solver_id] = TechnicianWorkOrderSolver(
+                    self.config,
+                    solver_id=solver_id,
+                    concurrent_mode=True
+                )
+            return self.solver_instances[solver_id]
+
+    def submit_request(self, problem: OptimizationProblem,
+                      config: Optional[Dict[str, Any]] = None,
+                      priority: int = 1) -> str:
+        """Submit an optimization request for concurrent processing"""
+        request_id = str(uuid.uuid4())
+        request = SolverRequest(
+            request_id=request_id,
+            problem=problem,
+            config=config,
+            priority=priority
+        )
+
+        # Add to queue
+        self.request_queue.put(request)
+
+        # Submit to executor
+        future = self.executor.submit(self._process_request, request)
+        self.active_requests[request_id] = future
+
+        with self.stats_lock:
+            self.stats['total_requests'] += 1
+
+        logger.info(f"Submitted request {request_id} with priority {priority}")
+        return request_id
+
+    def _process_request(self, request: SolverRequest) -> SolverResult:
+        """Process a single optimization request"""
+        start_time = time.time()
+
+        # Get assigned solver ID using round-robin
+        solver_id = self._get_next_solver_id()
+
+        try:
+            self._mark_solver_busy(solver_id)
+
+            with self.stats_lock:
+                self.stats['active_solvers'] += 1
+
+            print(f"🚀 Processing request {request.request_id[:8]} on solver {solver_id}")
+
+            # Get CUDA stream for this request
+            with self.cuda_streams.get_stream() as (stream_id, stream):
+                print(f"   🎯 Using CUDA stream {stream_id}")
+
+                # Get solver instance
+                solver = self.get_solver_instance(solver_id)
+
+                # Set CUDA stream context if available
+                if stream is not None:
+                    try:
+                        import cupy as cp
+                        with stream:
+                            solution = solver.solve(request.problem)
+                    except Exception:
+                        # Fallback without stream context
+                        solution = solver.solve(request.problem)
+                else:
+                    solution = solver.solve(request.problem)
+
+                processing_time = time.time() - start_time
+
+                result = SolverResult(
+                    request_id=request.request_id,
+                    solution=solution,
+                    processing_time=processing_time,
+                    solver_id=solver_id,
+                    success=True
+                )
+
+                # Store result
+                self.results[request.request_id] = result
+
+                # Update statistics
+                with self.stats_lock:
+                    self.stats['completed_requests'] += 1
+                    self.stats['active_solvers'] -= 1
+                    # Update average processing time
+                    total_completed = self.stats['completed_requests']
+                    self.stats['average_processing_time'] = (
+                        (self.stats['average_processing_time'] * (total_completed - 1) + processing_time) / total_completed
+                    )
+
+                print(f"✅ Completed request {request.request_id[:8]} in {processing_time:.3f}s on solver {solver_id}")
+                return result
+
+        except Exception as e:
+            processing_time = time.time() - start_time
+            error_msg = str(e)
+
+            result = SolverResult(
+                request_id=request.request_id,
+                solution=OptimizationSolution(
+                    status=SolutionStatus.ERROR,
+                    unassigned_orders=[wo.id for wo in request.problem.work_orders]
+                ),
+                processing_time=processing_time,
+                solver_id=solver_id,
+                success=False,
+                error=error_msg
+            )
+
+            self.results[request.request_id] = result
+
+            with self.stats_lock:
+                self.stats['failed_requests'] += 1
+                self.stats['active_solvers'] -= 1
+
+            logger.error(f"Request {request.request_id} failed: {error_msg}")
+            print(f"❌ Request {request.request_id[:8]} failed: {error_msg}")
+            return result
+
+        finally:
+            # Mark solver as free and clean up
+            self._mark_solver_free(solver_id)
+
+            # Clean up request from active list
+            if request.request_id in self.active_requests:
+                del self.active_requests[request.request_id]
+
+    def get_result(self, request_id: str, timeout: float = None) -> Optional[SolverResult]:
+        """Get result for a specific request"""
+        if request_id in self.results:
+            return self.results[request_id]
+
+        # Wait for completion if request is active
+        if request_id in self.active_requests:
+            try:
+                future = self.active_requests[request_id]
+                result = future.result(timeout=timeout)
+                return result
+            except Exception as e:
+                logger.error(f"Failed to get result for request {request_id}: {e}")
+                return None
+
+        return None
+
+    def wait_for_completion(self, request_ids: List[str], timeout: float = None) -> Dict[str, SolverResult]:
+        """Wait for multiple requests to complete"""
+        results = {}
+
+        # Get futures for active requests
+        futures = {
+            self.active_requests[req_id]: req_id
+            for req_id in request_ids
+            if req_id in self.active_requests
+        }
+
+        # Wait for completion
+        try:
+            for future in as_completed(futures.keys(), timeout=timeout):
+                req_id = futures[future]
+                try:
+                    result = future.result()
+                    results[req_id] = result
+                except Exception as e:
+                    logger.error(f"Request {req_id} failed: {e}")
+        except Exception as e:
+            logger.error(f"Error waiting for completion: {e}")
+
+        # Add already completed results
+        for req_id in request_ids:
+            if req_id in self.results and req_id not in results:
+                results[req_id] = self.results[req_id]
+
+        return results
+
+    def solve_batch(self, problems: List[OptimizationProblem],
+                   configs: Optional[List[Dict[str, Any]]] = None,
+                   timeout: float = None) -> List[OptimizationSolution]:
+        """Solve multiple problems concurrently"""
+        if configs is None:
+            configs = [None] * len(problems)
+
+        # Submit all requests
+        request_ids = []
+        for i, (problem, config) in enumerate(zip(problems, configs)):
+            request_id = self.submit_request(problem, config, priority=i)
+            request_ids.append(request_id)
+
+        print(f"🚀 Submitted {len(request_ids)} problems for concurrent processing")
+
+        # Wait for completion
+        results = self.wait_for_completion(request_ids, timeout)
+
+        # Extract solutions in order
+        solutions = []
+        for req_id in request_ids:
+            if req_id in results:
+                solutions.append(results[req_id].solution)
+            else:
+                # Create error solution
+                solutions.append(OptimizationSolution(
+                    status=SolutionStatus.ERROR,
+                    unassigned_orders=[]
+                ))
+
+        return solutions
+
+    def get_statistics(self) -> Dict[str, Any]:
+        """Get solver statistics"""
+        with self.stats_lock:
+            stats = self.stats.copy()
+
+        with self.solver_assignment_lock:
+            busy_solvers = self.busy_solvers.copy()
+
+        stats['uptime'] = time.time() - stats['start_time']
+        stats['success_rate'] = (
+            stats['completed_requests'] / max(1, stats['total_requests']) * 100
+        )
+        stats['queue_size'] = self.request_queue.qsize()
+        stats['active_requests'] = len(self.active_requests)
+        stats['busy_solvers'] = list(busy_solvers)
+        stats['available_solvers'] = [i for i in range(self.max_solvers) if i not in busy_solvers]
+
+        return stats
+
+    def shutdown(self):
+        """Shutdown the concurrent solver manager"""
+        print("🔄 Shutting down ConcurrentSolverManager...")
+
+        # Wait for active requests to complete
+        for request_id, future in list(self.active_requests.items()):
+            try:
+                future.result(timeout=5.0)
+            except Exception:
+                pass
+
+        # Shutdown executor
+        self.executor.shutdown(wait=True)
+
+        # Synchronize CUDA streams
+        self.cuda_streams.synchronize_all()
+
+        print("✅ ConcurrentSolverManager shutdown complete")
+
+
 class TechnicianWorkOrderSolver:
     """
     Main solver class that integrates OSRM and cuOpt for technician-workorder optimization
-    ULTRA HIGH PERFORMANCE VERSION
+    ULTRA HIGH PERFORMANCE VERSION WITH CUDA STREAMS SUPPORT
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: Optional[Dict[str, Any]] = None,
+                 solver_id: int = 0, concurrent_mode: bool = False):
         """Initialize solver with configuration"""
+        self.solver_id = solver_id
+        self.concurrent_mode = concurrent_mode
+
         self.config = CONFIG.copy()
         if config:
             for key, value in config.items():
@@ -78,8 +518,11 @@ class TechnicianWorkOrderSolver:
             logger.error("cuOpt is not available. Cannot perform optimization.")
             raise RuntimeError("cuOpt is not available. Please check cuOpt installation.")
 
-        logger.info("Initialized TechnicianWorkOrderSolver")
-        print("✅ TechnicianWorkOrderSolver initialized with cuOpt")
+        logger.info(f"Initialized TechnicianWorkOrderSolver {solver_id} (concurrent: {concurrent_mode})")
+        if concurrent_mode:
+            print(f"✅ TechnicianWorkOrderSolver {solver_id} initialized for concurrent execution")
+        else:
+            print("✅ TechnicianWorkOrderSolver initialized with cuOpt")
 
     def solve(self, problem: OptimizationProblem) -> OptimizationSolution:
         """Solve the optimization problem with maximum performance"""
@@ -96,44 +539,46 @@ class TechnicianWorkOrderSolver:
                 )
 
             problem_size = len(problem.technicians) + len(problem.work_orders)
-            print(f"🔍 Problem: {len(problem.technicians)} techs, {len(problem.work_orders)} orders (total: {problem_size})")
+            solver_prefix = f"[Solver {self.solver_id}]" if self.concurrent_mode else ""
+            print(f"🔍 {solver_prefix} Problem: {len(problem.technicians)} techs, {len(problem.work_orders)} orders (total: {problem_size})")
 
             # Step 1: Calculate distance matrix using OSRM
             if problem.distance_matrix is None:
-                print("🌐 Calculating travel times via OSRM...")
+                print(f"🌐 {solver_prefix} Calculating travel times via OSRM...")
                 matrix_start = time.time()
                 problem.distance_matrix = calculate_matrix_for_problem(
                     problem.technicians, problem.work_orders
                 )
                 matrix_time = time.time() - matrix_start
-                print(f"✅ Distance matrix calculated in {matrix_time:.3f}s")
+                print(f"✅ {solver_prefix} Distance matrix calculated in {matrix_time:.3f}s")
 
             # Step 2: Build cuOpt DataModel with performance optimizations
-            print("🏗️ Building cuOpt data model...")
+            print(f"🏗️ {solver_prefix} Building cuOpt data model...")
             model_start = time.time()
             data_model = self._build_cuopt_model_optimized(problem)
             model_time = time.time() - model_start
-            print(f"✅ cuOpt data model built in {model_time:.3f}s")
+            print(f"✅ {solver_prefix} cuOpt data model built in {model_time:.3f}s")
 
             # Step 3: Configure solver with ultra-aggressive settings
-            print("⚙️ Configuring high-performance solver...")
+            print(f"⚙️ {solver_prefix} Configuring high-performance solver...")
             solver_settings = self._configure_optimized_solver(problem_size)
 
             # Step 4: Verify GPU and run solver
-            self._verify_gpu_status()
+            if not self.concurrent_mode:  # Only verify once for concurrent mode
+                self._verify_gpu_status()
 
-            print("🚀 Running cuOpt optimization...")
+            print(f"🚀 {solver_prefix} Running cuOpt optimization...")
             solve_start = time.time()
             solution = Solve(data_model, solver_settings)
             solve_time = time.time() - solve_start
-            print(f"✅ cuOpt solved in {solve_time:.3f}s")
+            print(f"✅ {solver_prefix} cuOpt solved in {solve_time:.3f}s")
 
             # Step 5: Check solver status
             solver_status = solution.get_status()
             if solver_status == 0:
-                print(f"📊 SUCCESS: Objective value = {solution.get_total_objective():.2f}")
+                print(f"📊 {solver_prefix} SUCCESS: Objective value = {solution.get_total_objective():.2f}")
             else:
-                print(f"📊 Status {solver_status}: {solution.get_message()}")
+                print(f"📊 {solver_prefix} Status {solver_status}: {solution.get_message()}")
 
             # Step 6: Convert results to our format
             conversion_start = time.time()
@@ -143,19 +588,20 @@ class TechnicianWorkOrderSolver:
 
             # Performance summary
             total_time = optimization_solution.solve_time
-            print(f"🏁 PERFORMANCE SUMMARY:")
-            print(f"   OSRM Matrix: {matrix_time:.3f}s ({100*matrix_time/total_time:.1f}%)")
-            print(f"   Model Build: {model_time:.3f}s ({100*model_time/total_time:.1f}%)")
-            print(f"   cuOpt Solve: {solve_time:.3f}s ({100*solve_time/total_time:.1f}%)")
-            print(f"   Conversion:  {conversion_time:.3f}s ({100*conversion_time/total_time:.1f}%)")
-            print(f"   TOTAL TIME:  {total_time:.3f}s")
-            print(f"   Status: {optimization_solution.status.value}, Orders: {optimization_solution.orders_completed}")
+            if not self.concurrent_mode or logger.isEnabledFor(logging.INFO):
+                print(f"🏁 {solver_prefix} PERFORMANCE SUMMARY:")
+                print(f"   OSRM Matrix: {matrix_time:.3f}s ({100*matrix_time/total_time:.1f}%)")
+                print(f"   Model Build: {model_time:.3f}s ({100*model_time/total_time:.1f}%)")
+                print(f"   cuOpt Solve: {solve_time:.3f}s ({100*solve_time/total_time:.1f}%)")
+                print(f"   Conversion:  {conversion_time:.3f}s ({100*conversion_time/total_time:.1f}%)")
+                print(f"   TOTAL TIME:  {total_time:.3f}s")
+                print(f"   Status: {optimization_solution.status.value}, Orders: {optimization_solution.orders_completed}")
 
             return optimization_solution
 
         except Exception as e:
             logger.error(f"Solver error: {e}")
-            print(f"❌ Solver error: {e}")
+            print(f"❌ {solver_prefix} Solver error: {e}")
             return OptimizationSolution(
                 status=SolutionStatus.ERROR,
                 unassigned_orders=[wo.id for wo in problem.work_orders],
@@ -166,17 +612,8 @@ class TechnicianWorkOrderSolver:
         """Configure solver with ultra-aggressive performance settings"""
         solver_settings = SolverSettings()
 
-        # ULTRA aggressive time limits based on problem size
-        if problem_size <= 10:
-            time_limit = 0.05  # 50ms for very tiny problems
-        elif problem_size <= 15:
-            time_limit = 0.1   # 100ms for tiny problems
-        elif problem_size <= 30:
-            time_limit = 0.3   # 300ms for small problems
-        elif problem_size <= 100:
-            time_limit = 1.0   # 1s for medium problems
-        else:
-            time_limit = get_optimal_time_limit(problem_size)
+        # Use concurrent time limits if in concurrent mode
+        time_limit = get_optimal_time_limit(problem_size, self.concurrent_mode)
 
         solver_settings.set_time_limit(time_limit)
 
@@ -184,7 +621,8 @@ class TechnicianWorkOrderSolver:
         solver_settings.set_verbose_mode(False)
         solver_settings.set_error_logging_mode(False)
 
-        print(f"   ⚡⚡ ULTRA-fast mode: {time_limit}s limit for {problem_size} locations")
+        mode_str = "CONCURRENT" if self.concurrent_mode else "ULTRA-fast"
+        print(f"   ⚡⚡ {mode_str} mode: {time_limit}s limit for {problem_size} locations")
 
         return solver_settings
 
@@ -257,51 +695,13 @@ class TechnicianWorkOrderSolver:
                     locations=cudf.Series([], dtype='int32')
                 )
         else:
-            print("   ⚡⚡ Skipping breaks (ultra-performance mode)")
+            if not self.concurrent_mode:
+                print("   ⚡⚡ Skipping breaks (ultra-performance mode)")
 
         # 8. Set capacity dimensions with performance optimizations
         self._set_capacity_dimensions_optimized(data_model, problem.technicians, problem.work_orders, problem_size)
 
         return data_model
-
-    def _set_order_time_windows_fast(self, data_model: DataModel, work_orders: List[WorkOrder]):
-        """Set time windows for work orders - optimized version"""
-        earliest_times = []
-        latest_times = []
-
-        for wo in work_orders:
-            if wo.time_window:
-                earliest_times.append(wo.time_window.earliest)
-                latest_times.append(wo.time_window.latest)
-            else:
-                earliest_times.append(0)
-                latest_times.append(24 * 60)  # End of day
-
-        data_model.set_order_time_windows(
-            cudf.Series(earliest_times, dtype=np.int32),
-            cudf.Series(latest_times, dtype=np.int32)
-        )
-
-    def _set_vehicle_time_windows_fast(self, data_model: DataModel, technicians: List[Technician]):
-        """Set time windows and breaks for technicians - optimized version"""
-        # Vehicle time windows (work shifts)
-        earliest_times = [tech.work_shift.earliest for tech in technicians]
-        latest_times = [tech.work_shift.latest for tech in technicians]
-
-        data_model.set_vehicle_time_windows(
-            cudf.Series(earliest_times, dtype=np.int32),
-            cudf.Series(latest_times, dtype=np.int32)
-        )
-
-        # Breaks for each technician
-        for i, tech in enumerate(technicians):
-            data_model.add_vehicle_break(
-                vehicle_id=i,
-                earliest=int(tech.break_window.earliest),
-                latest=int(tech.break_window.latest),
-                duration=int(tech.break_duration),
-                locations=cudf.Series([], dtype='int32')
-            )
 
     def _set_capacity_dimensions_optimized(self, data_model: DataModel, technicians: List[Technician],
                                          work_orders: List[WorkOrder], problem_size: int):
@@ -320,12 +720,14 @@ class TechnicianWorkOrderSolver:
         # For tiny problems, use minimal constraints only (major speedup)
         minimal_threshold = self.cuopt_config.get('minimal_constraints_threshold', 15)
         if problem_size <= minimal_threshold:
-            print("   ⚡⚡ Minimal constraints only (ultra-performance mode)")
+            if not self.concurrent_mode:
+                print("   ⚡⚡ Minimal constraints only (ultra-performance mode)")
             return
 
         # For larger problems, check if we should skip complex constraints
         if should_skip_complex_constraints(problem_size):
-            print("   ⚡ Skipping skill constraints (performance mode)")
+            if not self.concurrent_mode:
+                print("   ⚡ Skipping skill constraints (performance mode)")
             return
 
         # For larger problems, set simplified skill constraints
@@ -364,45 +766,6 @@ class TechnicianWorkOrderSolver:
             f"skill_{critical_skill}",
             cudf.Series(order_demands),
             cudf.Series(vehicle_capacities)
-        )
-
-    def _set_skill_constraints_fast(self, data_model: DataModel, technicians: List[Technician], work_orders: List[WorkOrder]):
-        """Set skill constraints - optimized version"""
-        # Get all unique skills
-        all_skills = set()
-        for tech in technicians:
-            all_skills.update(tech.skills)
-        for wo in work_orders:
-            all_skills.update(wo.required_skills)
-
-        if not all_skills:
-            return
-
-        # Find the most critical skill (creates biggest constraint)
-        critical_skill = None
-        max_constraint_value = 0
-
-        for skill in all_skills:
-            techs_with_skill = sum(1 for tech in technicians if skill in tech.skills)
-            orders_needing_skill = sum(1 for wo in work_orders if skill in wo.required_skills)
-
-            if techs_with_skill > 0 and orders_needing_skill > 0:
-                constraint_value = orders_needing_skill / techs_with_skill
-                if constraint_value > max_constraint_value:
-                    max_constraint_value = constraint_value
-                    critical_skill = skill
-
-        if not critical_skill:
-            return
-
-        # Set up capacity dimension for the critical skill only
-        vehicle_capacities = [100 if critical_skill in tech.skills else 0 for tech in technicians]
-        order_demands = [1 if critical_skill in wo.required_skills else 0 for wo in work_orders]
-
-        data_model.add_capacity_dimension(
-            f"skill_{critical_skill}",
-            cudf.Series(order_demands, dtype=np.int32),
-            cudf.Series(vehicle_capacities, dtype=np.int32)
         )
 
     def _convert_solution(self, solution, problem: OptimizationProblem) -> OptimizationSolution:
@@ -530,6 +893,25 @@ class TechnicianWorkOrderSolver:
         return routes
 
 
+# Global concurrent solver manager instance
+_concurrent_solver_manager = None
+_manager_lock = Lock()
+
+def get_concurrent_solver_manager() -> ConcurrentSolverManager:
+    """Get the global concurrent solver manager instance"""
+    global _concurrent_solver_manager
+
+    with _manager_lock:
+        if _concurrent_solver_manager is None:
+            concurrent_config = get_concurrent_solver_config()
+            if concurrent_config['enabled']:
+                _concurrent_solver_manager = ConcurrentSolverManager()
+            else:
+                raise RuntimeError("Concurrent execution is not enabled")
+
+    return _concurrent_solver_manager
+
+
 # Convenience functions
 
 def is_cuopt_available() -> bool:
@@ -542,7 +924,8 @@ def get_cuopt_status() -> Dict[str, Any]:
     status = {
         'available': cuopt_available,
         'routing_module': cuopt_available,
-        'error': None
+        'error': None,
+        'concurrent_execution': False
     }
 
     if cuopt_available:
@@ -550,6 +933,13 @@ def get_cuopt_status() -> Dict[str, Any]:
             # Test basic functionality
             test_dm = DataModel(2, 1, 1)
             status['basic_functionality'] = True
+
+            # Check concurrent execution capability
+            concurrent_config = get_concurrent_solver_config()
+            status['concurrent_execution'] = concurrent_config['enabled']
+            status['max_concurrent_solvers'] = concurrent_config['max_concurrent_solvers']
+            status['cuda_streams'] = concurrent_config['cuda_streams']
+
         except Exception as e:
             status['basic_functionality'] = False
             status['error'] = str(e)
@@ -572,6 +962,25 @@ def solve_optimization_problem(technicians: List[Technician],
 
     solver = TechnicianWorkOrderSolver(config)
     return solver.solve(problem)
+
+
+def solve_optimization_problems_concurrent(problems: List[OptimizationProblem],
+                                         configs: Optional[List[Dict[str, Any]]] = None,
+                                         timeout: float = None) -> List[OptimizationSolution]:
+    """Solve multiple optimization problems concurrently using CUDA streams"""
+    try:
+        manager = get_concurrent_solver_manager()
+        return manager.solve_batch(problems, configs, timeout)
+    except RuntimeError:
+        # Fallback to sequential processing
+        logger.warning("Concurrent execution not available, falling back to sequential processing")
+        solutions = []
+        for i, problem in enumerate(problems):
+            config = configs[i] if configs and i < len(configs) else None
+            solver = TechnicianWorkOrderSolver(config)
+            solution = solver.solve(problem)
+            solutions.append(solution)
+        return solutions
 
 
 def test_solver():
@@ -641,6 +1050,109 @@ def test_solver():
         return False
 
 
+def test_concurrent_solver():
+    """Test concurrent solver with multiple problems"""
+    from core.models import Technician, WorkOrder, Location, TimeWindow, Priority, WorkOrderType
+
+    print("=== TESTING CONCURRENT SOLVER ===")
+
+    # Create multiple test problems
+    problems = []
+    for i in range(3):
+        technicians = [
+            Technician(
+                id=f"TECH{i:03d}",
+                name=f"Technician {i}",
+                start_location=Location(3.1073 + i*0.01, 101.6067 + i*0.01, f"Location {i}"),
+                work_shift=TimeWindow(480, 1020),
+                break_window=TimeWindow(720, 780),
+                break_duration=60,
+                skills={"electrical", "maintenance"},
+                max_daily_orders=5,
+                max_travel_time=180
+            )
+        ]
+
+        work_orders = [
+            WorkOrder(
+                id=f"WO{i:03d}",
+                location=Location(3.1319 + i*0.01, 101.6292 + i*0.01, f"Work Location {i}"),
+                priority=Priority.MEDIUM,
+                work_type=WorkOrderType.MAINTENANCE,
+                required_skills={"electrical"},
+                service_time=60,
+            )
+        ]
+
+        problem = OptimizationProblem(technicians=technicians, work_orders=work_orders)
+        problems.append(problem)
+
+    try:
+        print(f"=== STARTING CONCURRENT SOLVER TEST WITH {len(problems)} PROBLEMS ===")
+        start_time = time.time()
+
+        solutions = solve_optimization_problems_concurrent(problems, timeout=60.0)
+
+        total_time = time.time() - start_time
+        print(f"\n=== CONCURRENT OPTIMIZATION RESULTS ===")
+        print(f"Total problems: {len(problems)}")
+        print(f"Total time: {total_time:.3f}s")
+        print(f"Average time per problem: {total_time/len(problems):.3f}s")
+
+        success_count = 0
+        for i, solution in enumerate(solutions):
+            status = solution.status.value
+            orders_completed = solution.orders_completed
+            if status != "error" and orders_completed > 0:
+                success_count += 1
+            print(f"Problem {i}: Status={status}, Orders={orders_completed}, Time={solution.solve_time:.3f}s")
+
+        success_rate = success_count / len(problems) * 100
+        print(f"\nSuccess rate: {success_rate:.1f}% ({success_count}/{len(problems)})")
+
+        # Get manager statistics if available
+        try:
+            manager = get_concurrent_solver_manager()
+            stats = manager.get_statistics()
+            print(f"\nManager Statistics:")
+            print(f"  Total requests: {stats['total_requests']}")
+            print(f"  Completed: {stats['completed_requests']}")
+            print(f"  Failed: {stats['failed_requests']}")
+            print(f"  Success rate: {stats['success_rate']:.1f}%")
+            print(f"  Average processing time: {stats['average_processing_time']:.3f}s")
+        except:
+            pass
+
+        overall_success = success_rate >= 80  # 80% success rate threshold
+        print(f"\n🎯 Concurrent test result: {'✅ PASS' if overall_success else '❌ FAIL'}")
+        return overall_success
+
+    except Exception as e:
+        print(f"❌ Concurrent solver test failed with exception: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
 if __name__ == "__main__":
     print("Testing solver...")
-    test_solver()
+
+    # Test basic solver
+    basic_success = test_solver()
+
+    # Test concurrent solver if available
+    concurrent_config = get_concurrent_solver_config()
+    if concurrent_config['enabled']:
+        print("\n" + "="*50)
+        concurrent_success = test_concurrent_solver()
+
+        if basic_success and concurrent_success:
+            print("\n🎉 All tests passed!")
+        else:
+            print("\n❌ Some tests failed")
+    else:
+        print("\n⚠️ Concurrent execution disabled, skipping concurrent tests")
+        if basic_success:
+            print("\n🎉 Basic tests passed!")
+        else:
+            print("\n❌ Basic tests failed")
