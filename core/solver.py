@@ -565,13 +565,13 @@ class TechnicianWorkOrderSolver:
             # Step 2: Build cuOpt DataModel with performance optimizations
             print(f"🏗️ {solver_prefix} Building cuOpt data model...")
             model_start = time.time()
-            data_model = self._build_cuopt_model_optimized(problem)
+            data_model = self._build_cuopt_model(problem)
             model_time = time.time() - model_start
             print(f"✅ {solver_prefix} cuOpt data model built in {model_time:.3f}s")
 
             # Step 3: Configure solver with ultra-aggressive settings
             print(f"⚙️ {solver_prefix} Configuring high-performance solver...")
-            solver_settings = self._configure_optimized_solver(problem_size)
+            solver_settings = self._configure_solver(problem_size)
 
             # Step 4: Verify GPU and run solver
             if not self.concurrent_mode:  # Only verify once for concurrent mode
@@ -618,7 +618,7 @@ class TechnicianWorkOrderSolver:
                 solve_time=time.time() - start_time
             )
 
-    def _configure_optimized_solver(self, problem_size: int) -> SolverSettings:
+    def _configure_solver(self, problem_size: int) -> SolverSettings:
         """Configure solver with ultra-aggressive performance settings"""
         solver_settings = SolverSettings()
 
@@ -651,7 +651,7 @@ class TechnicianWorkOrderSolver:
         except Exception as e:
             print(f"   ⚠️ GPU verification failed: {e}")
 
-    def _build_cuopt_model_optimized(self, problem: OptimizationProblem) -> DataModel:
+    def _build_cuopt_model(self, problem: OptimizationProblem) -> DataModel:
         """
         Build cuOpt DataModel with ultra performance optimizations
         """
@@ -709,12 +709,12 @@ class TechnicianWorkOrderSolver:
                 print("   ⚡⚡ Skipping breaks (ultra-performance mode)")
 
         # 8. Set capacity dimensions with performance optimizations
-        self._set_capacity_dimensions_optimized(data_model, problem.technicians, problem.work_orders, problem_size)
+        self._set_capacity_dimensions(data_model, problem.technicians, problem.work_orders, problem_size)
 
         return data_model
 
-    def _set_capacity_dimensions_optimized(self, data_model: DataModel, technicians: List[Technician],
-                                         work_orders: List[WorkOrder], problem_size: int):
+    def _set_capacity_dimensions(self, data_model: DataModel, technicians: List[Technician],
+                                 work_orders: List[WorkOrder], problem_size: int):
         """Set capacity dimensions with ultra performance optimizations"""
 
         # Always set daily order limits (essential constraint) - vectorized
