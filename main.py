@@ -50,7 +50,7 @@ try:
         if concurrent_config['enabled']:
             try:
                 concurrent_manager = get_concurrent_solver_manager()
-                print(f"✅ Concurrent solver manager initialized with {concurrent_config['max_concurrent_solvers']} solvers")
+                print(f"✅ Concurrent solver manager initialized with {concurrent_config['max_concurrent_instances']} instances")
             except Exception as e:
                 print(f"⚠️ Failed to initialize concurrent solver manager: {e}")
                 concurrent_manager = None
@@ -449,11 +449,13 @@ async def health_check():
     if concurrent_manager:
         try:
             stats = concurrent_manager.get_statistics()
+            concurrent_config = get_concurrent_solver_config()
             concurrent_details = {
                 "enabled": True,
                 "status": "ok",
-                "max_solvers": get_concurrent_solver_config()['max_concurrent_solvers'],
-                "cuda_streams": get_concurrent_solver_config()['cuda_streams'],
+                "max_concurrent_instances": concurrent_config['max_concurrent_instances'],
+                "solver_threads": concurrent_config['max_concurrent_solvers'],
+                "cuda_streams": concurrent_config['cuda_streams'],
                 "active_requests": stats.get('active_requests', 0),
                 "total_requests": stats.get('total_requests', 0),
                 "success_rate": stats.get('success_rate', 0.0)
@@ -792,7 +794,8 @@ async def get_cuopt_status_endpoint():
                 concurrent_config = get_concurrent_solver_config()
                 concurrent_info = {
                     "enabled": True,
-                    "max_solvers": concurrent_config['max_concurrent_solvers'],
+                    "max_concurrent_instances": concurrent_config['max_concurrent_instances'],
+                    "solver_threads": concurrent_config['max_concurrent_solvers'],
                     "cuda_streams": concurrent_config['cuda_streams'],
                     "statistics": stats
                 }
@@ -872,9 +875,11 @@ def main():
     logger.info(f"Starting server on {host}:{port}")
 
     if concurrent_manager:
+        concurrent_config = get_concurrent_solver_config()
         print(f"🚀 Server starting with concurrent execution enabled")
-        print(f"   Max concurrent solvers: {get_concurrent_solver_config()['max_concurrent_solvers']}")
-        print(f"   CUDA streams: {get_concurrent_solver_config()['cuda_streams']}")
+        print(f"   Max concurrent instances: {concurrent_config['max_concurrent_instances']}")
+        print(f"   Solver threads: {concurrent_config['max_concurrent_solvers']}")
+        print(f"   CUDA streams: {concurrent_config['cuda_streams']}")
     else:
         print(f"🚀 Server starting with sequential execution only")
 

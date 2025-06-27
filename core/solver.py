@@ -50,13 +50,17 @@ try:
     # Initialize CUDA streams for concurrent execution
     try:
         import cupy as cp
-        concurrent_config = get_config()['cuopt']['concurrent_execution']
+        config = get_config()
+        concurrent_config = config['cuopt']['concurrent_execution']
         if concurrent_config['enabled']:
-            print(f"🚀 Initializing {concurrent_config['cuda_streams']} CUDA streams...")
+            max_instances = concurrent_config['max_concurrent_instances']
+            print(f"🚀 Initializing {max_instances} CUDA streams...")
             # We'll create streams in the ConcurrentSolverManager
             print("✅ CUDA streams support ready")
     except ImportError:
         print("⚠️ CuPy not available, CUDA streams will be limited")
+    except Exception as e:
+        print(f"⚠️ CUDA streams initialization failed: {e}")
 
 except ImportError as e:
     print(f"❌ cuOpt import failed: {e}")
@@ -177,9 +181,12 @@ class ConcurrentSolverManager:
             logger.error("cuOpt is not available. Cannot initialize concurrent solver.")
             raise RuntimeError("cuOpt is not available. Please check cuOpt installation.")
 
-        # Initialize concurrent execution components
-        self.max_solvers = self.concurrent_config['max_concurrent_solvers']
-        self.cuda_streams = CUDAStreamManager(self.concurrent_config['cuda_streams'])
+        # Initialize concurrent execution components using single setting
+        self.max_instances = self.concurrent_config['max_concurrent_instances']
+        self.max_solvers = self.max_instances  # Same as max_instances
+        self.num_cuda_streams = self.max_instances  # Same as max_instances
+
+        self.cuda_streams = CUDAStreamManager(self.num_cuda_streams)
 
         # Request queue and processing
         self.request_queue = PriorityQueue()
@@ -213,11 +220,12 @@ class ConcurrentSolverManager:
         self.solver_instances = {}
         self.solver_lock = Lock()
 
-        logger.info(f"Initialized ConcurrentSolverManager with {self.max_solvers} solvers and {self.concurrent_config['cuda_streams']} CUDA streams")
+        logger.info(f"Initialized ConcurrentSolverManager with {self.max_instances} concurrent instances")
         print("✅ ConcurrentSolverManager initialized")
-        print(f"   🚀 Max concurrent solvers: {self.max_solvers}")
-        print(f"   🎯 CUDA streams: {self.concurrent_config['cuda_streams']}")
-        print(f"   💾 Memory per solver: {self.concurrent_config['memory_pool_per_solver']}MB")
+        print(f"   🚀 Max concurrent instances: {self.max_instances}")
+        print(f"   🧵 Solver threads: {self.max_solvers}")
+        print(f"   🎯 CUDA streams: {self.num_cuda_streams}")
+        print(f"   💾 Memory per instance: {self.concurrent_config['memory_pool_per_instance']}MB")
 
     def _get_next_solver_id(self) -> int:
         """Get the next available solver ID using round-robin assignment"""
@@ -467,6 +475,8 @@ class ConcurrentSolverManager:
         stats['active_requests'] = len(self.active_requests)
         stats['busy_solvers'] = list(busy_solvers)
         stats['available_solvers'] = [i for i in range(self.max_solvers) if i not in busy_solvers]
+        stats['max_concurrent_instances'] = self.max_instances
+        stats['cuda_streams'] = self.num_cuda_streams
 
         return stats
 
@@ -937,7 +947,8 @@ def get_cuopt_status() -> Dict[str, Any]:
             # Check concurrent execution capability
             concurrent_config = get_concurrent_solver_config()
             status['concurrent_execution'] = concurrent_config['enabled']
-            status['max_concurrent_solvers'] = concurrent_config['max_concurrent_solvers']
+            status['max_concurrent_instances'] = concurrent_config['max_concurrent_instances']
+            status['solver_threads'] = concurrent_config['max_concurrent_solvers']
             status['cuda_streams'] = concurrent_config['cuda_streams']
 
         except Exception as e:
@@ -1115,6 +1126,8 @@ def test_concurrent_solver():
             manager = get_concurrent_solver_manager()
             stats = manager.get_statistics()
             print(f"\nManager Statistics:")
+            print(f"  Max concurrent instances: {stats['max_concurrent_instances']}")
+            print(f"  CUDA streams: {stats['cuda_streams']}")
             print(f"  Total requests: {stats['total_requests']}")
             print(f"  Completed: {stats['completed_requests']}")
             print(f"  Failed: {stats['failed_requests']}")

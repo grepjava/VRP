@@ -34,15 +34,14 @@ CUOPT_CONFIG = {
     'results_file_path': './results/',
     'results_interval': 10,
 
-    # CUDA Streams Configuration for Concurrent Execution
+    # CUDA Streams Configuration for Concurrent Execution - SIMPLIFIED
     'concurrent_execution': {
         'enabled': True,
-        'max_concurrent_solvers': 6,      # Number of concurrent cuOpt instances
-        'cuda_streams': 6,                # Number of CUDA streams to create
-        'memory_pool_per_solver': 1024,   # MB per solver instance
-        'queue_timeout': 30,              # Timeout for solver queue in seconds
-        'batch_processing': True,         # Enable batch processing mode
-        'load_balancing': 'round_robin'   # 'round_robin', 'least_loaded', 'memory_based'
+        'max_concurrent_instances': 6,        # Single setting for both threads and CUDA streams
+        'memory_pool_per_instance': 1024,     # MB per solver instance
+        'queue_timeout': 30,                  # Timeout for solver queue in seconds
+        'batch_processing': True,             # Enable batch processing mode
+        'load_balancing': 'round_robin'       # 'round_robin', 'least_loaded', 'memory_based'
     },
 
     # GPU Memory Management
@@ -152,7 +151,7 @@ DATA_CONFIG = {
 
     # Concurrent processing limits
     'concurrent_limits': {
-        'max_requests_per_minute': 360,  # 6 solvers * 60 requests/min
+        'max_requests_per_minute': 360,  # 6 instances * 60 requests/min
         'max_concurrent_problems': 6,
         'queue_size': 50,
         'priority_queue_enabled': True
@@ -323,10 +322,13 @@ def get_config() -> Dict[str, Any]:
         config['osrm']['port'] = int(os.getenv('OSRM_PORT'))
         config['osrm']['base_url'] = f"http://{config['osrm']['host']}:{os.getenv('OSRM_PORT')}"
 
-    # Override concurrent solver count if environment variable is set
-    if os.getenv('CUOPT_CONCURRENT_SOLVERS'):
-        config['cuopt']['concurrent_execution']['max_concurrent_solvers'] = int(os.getenv('CUOPT_CONCURRENT_SOLVERS'))
-        config['cuopt']['concurrent_execution']['cuda_streams'] = int(os.getenv('CUOPT_CONCURRENT_SOLVERS'))
+    # Override concurrent instance count if environment variable is set
+    # Support both old and new environment variable names for backward compatibility
+    if os.getenv('CUOPT_CONCURRENT_INSTANCES'):
+        config['cuopt']['concurrent_execution']['max_concurrent_instances'] = int(os.getenv('CUOPT_CONCURRENT_INSTANCES'))
+    elif os.getenv('CUOPT_CONCURRENT_SOLVERS'):
+        # Backward compatibility with old environment variable name
+        config['cuopt']['concurrent_execution']['max_concurrent_instances'] = int(os.getenv('CUOPT_CONCURRENT_SOLVERS'))
 
     return config
 
@@ -377,10 +379,18 @@ def get_concurrent_solver_config() -> Dict[str, Any]:
     Get configuration specific to concurrent solver execution
 
     Returns:
-        dict: Concurrent solver configuration
+        dict: Concurrent solver configuration with derived values
     """
     config = get_config()
-    return config['cuopt']['concurrent_execution']
+    concurrent_config = config['cuopt']['concurrent_execution'].copy()
+
+    # Add derived values for backward compatibility
+    max_instances = concurrent_config['max_concurrent_instances']
+    concurrent_config['max_concurrent_solvers'] = max_instances  # For backward compatibility
+    concurrent_config['cuda_streams'] = max_instances           # Same as solver count
+    concurrent_config['memory_pool_per_solver'] = concurrent_config['memory_pool_per_instance']
+
+    return concurrent_config
 
 def should_use_concurrent_execution(problem_count: int = 1) -> bool:
     """
@@ -397,30 +407,30 @@ def should_use_concurrent_execution(problem_count: int = 1) -> bool:
 
     return (concurrent_config['enabled'] and
             problem_count >= 1 and
-            concurrent_config['max_concurrent_solvers'] > 1)
+            concurrent_config['max_concurrent_instances'] > 1)
 
-def calculate_memory_per_solver(total_gpu_memory_gb: float) -> int:
+def calculate_memory_per_instance(total_gpu_memory_gb: float) -> int:
     """
-    Calculate optimal memory allocation per solver
+    Calculate optimal memory allocation per solver instance
 
     Args:
         total_gpu_memory_gb: Total GPU memory in GB
 
     Returns:
-        int: Memory per solver in MB
+        int: Memory per solver instance in MB
     """
     config = get_config()
     concurrent_config = config['cuopt']['concurrent_execution']
-    max_solvers = concurrent_config['max_concurrent_solvers']
+    max_instances = concurrent_config['max_concurrent_instances']
 
     # Reserve 20% of memory for system overhead
     available_memory_gb = total_gpu_memory_gb * 0.8
-    memory_per_solver_gb = available_memory_gb / max_solvers
+    memory_per_instance_gb = available_memory_gb / max_instances
 
     # Convert to MB and ensure minimum allocation
-    memory_per_solver_mb = max(512, int(memory_per_solver_gb * 1024))
+    memory_per_instance_mb = max(512, int(memory_per_instance_gb * 1024))
 
-    return min(memory_per_solver_mb, concurrent_config['memory_pool_per_solver'])
+    return min(memory_per_instance_mb, concurrent_config['memory_pool_per_instance'])
 
 # =============================================================================
 # Validation functions
@@ -460,19 +470,17 @@ def validate_config() -> bool:
     # Validate concurrent execution configuration
     concurrent_config = config['cuopt']['concurrent_execution']
     if concurrent_config['enabled']:
-        if concurrent_config['max_concurrent_solvers'] <= 0:
-            print("Error: max_concurrent_solvers must be positive")
+        max_instances = concurrent_config['max_concurrent_instances']
+
+        if max_instances <= 0:
+            print("Error: max_concurrent_instances must be positive")
             return False
 
-        if concurrent_config['cuda_streams'] <= 0:
-            print("Error: cuda_streams must be positive")
+        if concurrent_config['memory_pool_per_instance'] <= 0:
+            print("Error: memory_pool_per_instance must be positive")
             return False
 
-        if concurrent_config['memory_pool_per_solver'] <= 0:
-            print("Error: memory_pool_per_solver must be positive")
-            return False
-
-        print(f"✅ Concurrent execution configured: {concurrent_config['max_concurrent_solvers']} solvers, {concurrent_config['cuda_streams']} CUDA streams")
+        print(f"✅ Concurrent execution configured: {max_instances} solver instances (threads + CUDA streams)")
 
     # Validate file paths
     for path_key in ['input_data_path', 'output_data_path', 'logs_path']:
@@ -612,8 +620,10 @@ if __name__ == "__main__":
     # Test configuration
     print("Configuration loaded successfully!")
     print(f"OSRM URL: {CONFIG['osrm']['base_url']}")
-    print(f"Concurrent Solvers: {CONFIG['cuopt']['concurrent_execution']['max_concurrent_solvers']}")
-    print(f"CUDA Streams: {CONFIG['cuopt']['concurrent_execution']['cuda_streams']}")
+    concurrent_config = get_concurrent_solver_config()
+    print(f"Concurrent Instances: {concurrent_config['max_concurrent_instances']}")
+    print(f"Solver Threads: {concurrent_config['max_concurrent_solvers']}")
+    print(f"CUDA Streams: {concurrent_config['cuda_streams']}")
 
     # Validate configuration
     if validate_config():
