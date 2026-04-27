@@ -1,8 +1,9 @@
 """
-cuOpt-based solver for technician-workorder optimization
-ULTRA HIGH PERFORMANCE VERSION WITH CUDA STREAMS AND GPU MEMORY MANAGEMENT
-Following the cuOpt service team routing notebook patterns with aggressive optimizations,
-concurrent execution using CUDA streams, and comprehensive GPU memory cleanup
+Technician-workorder VRP solver backed by NVIDIA cuOpt.
+
+Supports concurrent execution via a pool of solver instances, each pinned to a
+dedicated CUDA stream. GPU memory is managed through an RMM pool allocator with
+per-operation context managers to ensure prompt release between requests.
 """
 from __future__ import annotations
 
