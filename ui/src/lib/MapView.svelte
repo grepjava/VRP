@@ -6,6 +6,7 @@
   export let result = null
   export let ROUTE_COLORS = []
   export let pickingLocation = false
+  export let dropReturnTrip = false
 
   const dispatch = createEventDispatcher()
 
@@ -107,7 +108,7 @@
           const o = workOrders.find(o => o.id === a.work_order_id)
           return o ? [o.location.longitude, o.location.latitude] : null
         }).filter(Boolean),
-        [tech.start_location.longitude, tech.start_location.latitude]
+        ...(dropReturnTrip ? [] : [[tech.start_location.longitude, tech.start_location.latitude]])
       ]
 
       if (pts.length < 2) continue

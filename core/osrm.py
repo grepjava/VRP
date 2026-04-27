@@ -302,6 +302,8 @@ class OSRMClient:
             durations = [[cell / 60.0 if cell is not None else 0.0 for cell in row] for row in durations]
         elif time_unit == 'hours':
             durations = [[cell / 3600.0 if cell is not None else 0.0 for cell in row] for row in durations]
+        else:
+            durations = [[float(cell) if cell is not None else 0.0 for cell in row] for row in durations]
 
         # Extract distances if available
         distances = None

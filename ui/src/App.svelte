@@ -101,6 +101,8 @@
     return Object.keys(cfg).length ? cfg : null
   }
 
+  let optimizedDropReturnTrip = false
+
   // Progress bar state
   let progress = 0
   let progressPhase = ''
@@ -178,6 +180,7 @@
     }, 100)
 
     try {
+      optimizedDropReturnTrip = settings.drop_return_trip
       const techs = technicians.map(t => ({ ...t, drop_return_trip: settings.drop_return_trip }))
       result = await optimize(techs, workOrders, buildConfig())
       clearInterval(_progressTimer)
@@ -249,7 +252,7 @@
     />
     <div class="map-wrap">
       <MapView
-        {technicians} {workOrders} {result} {ROUTE_COLORS} {pickingLocation}
+        {technicians} {workOrders} {result} {ROUTE_COLORS} {pickingLocation} dropReturnTrip={optimizedDropReturnTrip}
         on:mapClick={handleMapClick}
       />
       {#if pickingLocation}
