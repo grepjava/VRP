@@ -1,7 +1,7 @@
 """
 Configuration file for Technician-WorkOrder Matching Application
 using cuOpt and OSRM for route optimization
-OPTIMIZED FOR HIGH PERFORMANCE WITH CUDA STREAMS
+OPTIMIZED FOR HIGH PERFORMANCE WITH CUDA STREAMS AND GPU MEMORY MANAGEMENT
 """
 
 import os
@@ -22,7 +22,7 @@ OSRM_CONFIG = {
 }
 
 # =============================================================================
-# cuOpt Solver Configuration - PERFORMANCE OPTIMIZED WITH CUDA STREAMS
+# cuOpt Solver Configuration - PERFORMANCE OPTIMIZED WITH CUDA STREAMS AND MEMORY MANAGEMENT
 # =============================================================================
 
 CUOPT_CONFIG = {
@@ -37,21 +37,30 @@ CUOPT_CONFIG = {
     # CUDA Streams Configuration for Concurrent Execution - SIMPLIFIED
     'concurrent_execution': {
         'enabled': True,
-        'max_concurrent_instances': 6,        # Single setting for both threads and CUDA streams
+        'max_concurrent_instances': 16,        # Single setting for both threads and CUDA streams
         'memory_pool_per_instance': 1024,     # MB per solver instance
         'queue_timeout': 30,                  # Timeout for solver queue in seconds
         'batch_processing': True,             # Enable batch processing mode
         'load_balancing': 'round_robin'       # 'round_robin', 'least_loaded', 'memory_based'
     },
 
-    # GPU Memory Management
+    # Enhanced GPU Memory Management
     'memory_management': {
         'initial_pool_size': 2**30,       # 1GB initial pool
         'maximum_pool_size': 8*2**30,     # 8GB maximum pool
         'per_solver_limit': 1.2*2**30,    # 1.2GB per solver max
         'enable_memory_pool': True,
         'auto_defragment': True,
-        'memory_growth_strategy': 'linear'  # 'linear', 'exponential'
+        'memory_growth_strategy': 'linear',  # 'linear', 'exponential'
+
+        # New memory management settings
+        'cleanup_threshold_mb': 100,      # Clean up if more than 100MB left after operation
+        'memory_warning_threshold': 0.8,  # Warn if using >80% of allocated memory
+        'force_cleanup_interval': 10,     # Force cleanup every 10 operations
+        'enable_memory_monitoring': True, # Enable detailed memory monitoring
+        'log_memory_usage': True,         # Log memory usage for debugging
+        'enable_context_managers': True,  # Use context managers for memory cleanup
+        'aggressive_cleanup': True        # Enable aggressive memory cleanup
     },
 
     # Performance thresholds
@@ -61,20 +70,20 @@ CUOPT_CONFIG = {
     'skip_breaks_threshold': 10,      # Skip breaks for problems ≤10 locations
     'minimal_constraints_threshold': 15,  # Minimal constraints for tiny problems
 
-    # ULTRA-aggressive time limits by problem size
+    # Time limits by problem size (seconds)
     'time_limits': {
-        'tiny': 0.1,      # ≤15 locations: 100ms (was 300ms)
-        'small': 0.3,     # ≤50 locations: 300ms (was 800ms)
-        'medium': 1.0,    # ≤100 locations: 1s (was 2s)
-        'large': 3.0      # >100 locations: 3s (was 5s)
+        'tiny': 5,        # ≤15 locations
+        'small': 10,      # ≤50 locations
+        'medium': 30,     # ≤100 locations
+        'large': 60       # >100 locations
     },
 
-    # Concurrent solver time limits (more aggressive for concurrent execution)
+    # Concurrent solver time limits — slightly tighter to allow batch throughput
     'concurrent_time_limits': {
-        'tiny': 0.05,     # ≤15 locations: 50ms
-        'small': 0.15,    # ≤50 locations: 150ms
-        'medium': 0.5,    # ≤100 locations: 500ms
-        'large': 1.5      # >100 locations: 1.5s
+        'tiny': 3,        # ≤15 locations
+        'small': 8,       # ≤50 locations
+        'medium': 20,     # ≤100 locations
+        'large': 45       # >100 locations
     },
 
     # cuOpt specific settings
@@ -149,12 +158,14 @@ DATA_CONFIG = {
     'max_work_orders': 500,
     'max_locations_total': 550,  # max_technicians + max_work_orders
 
-    # Concurrent processing limits
+    # Concurrent processing limits with memory considerations
     'concurrent_limits': {
         'max_requests_per_minute': 360,  # 6 instances * 60 requests/min
         'max_concurrent_problems': 6,
         'queue_size': 50,
-        'priority_queue_enabled': True
+        'priority_queue_enabled': True,
+        'memory_limit_per_request_mb': 1024,  # Memory limit per concurrent request
+        'max_memory_usage_percent': 80        # Maximum total GPU memory usage
     },
 
     # Data file paths
@@ -219,11 +230,19 @@ OPTIMIZATION_CONFIG = {
         'split_strategy': 'geographic',        # 'geographic', 'skills', 'random'
         'merge_results': True,                 # Merge split results back together
         'load_balancing': True                 # Balance load across available solvers
+    },
+
+    # Memory-aware optimization settings
+    'memory_optimization': {
+        'enable_memory_aware_scheduling': True,    # Schedule based on memory availability
+        'memory_threshold_for_sequential': 0.9,   # Use sequential if memory >90% full
+        'dynamic_batch_sizing': True,             # Adjust batch size based on memory
+        'prefer_smaller_problems_when_low_memory': True  # Prioritize smaller problems when memory is low
     }
 }
 
 # =============================================================================
-# Logging Configuration - OPTIMIZED FOR CONCURRENT EXECUTION
+# Enhanced Logging Configuration - OPTIMIZED FOR CONCURRENT EXECUTION WITH MEMORY MONITORING
 # =============================================================================
 
 LOGGING_CONFIG = {
@@ -250,7 +269,8 @@ LOGGING_CONFIG = {
         'osrm': 'WARNING',        # Reduced from INFO
         'solver': 'WARNING',      # Reduced from INFO
         'converter': 'WARNING',   # Reduced from INFO
-        'concurrent': 'INFO'      # New: Concurrent execution logging
+        'concurrent': 'INFO',     # Concurrent execution logging
+        'memory': 'INFO'          # Memory management logging
     },
 
     # Concurrent execution specific logging
@@ -260,6 +280,16 @@ LOGGING_CONFIG = {
         'log_queue_status': True,
         'log_solver_performance': True,
         'performance_interval': 10  # seconds
+    },
+
+    # Memory management specific logging
+    'memory_logging': {
+        'log_memory_allocation': True,     # Log memory allocations
+        'log_memory_cleanup': True,        # Log memory cleanup operations
+        'log_memory_warnings': True,       # Log memory warnings
+        'log_memory_leaks': True,          # Log potential memory leaks
+        'memory_log_interval': 5,          # Log memory status every 5 seconds
+        'detailed_memory_logging': False   # Enable detailed memory logging (debug only)
     }
 }
 
@@ -274,7 +304,7 @@ API_CONFIG = {
     'cors_enabled': True,
     'cors_origins': ["*"],  # Configure for security in production
     'title': 'Technician WorkOrder Optimization API',
-    'description': 'API for optimizing technician-workorder assignments using cuOpt and OSRM with CUDA Streams',
+    'description': 'API for optimizing technician-workorder assignments using cuOpt and OSRM with CUDA Streams and GPU Memory Management',
     'version': '1.0.0',
     'docs_url': '/docs',
     'redoc_url': '/redoc',
@@ -285,13 +315,24 @@ API_CONFIG = {
     'request_timeout': 300,  # 5 minutes for complex optimizations
     'max_request_size': 10 * 1024 * 1024,  # 10MB
 
-    # Concurrent API processing
+    # Concurrent API processing with memory management
     'concurrent_processing': {
         'enabled': True,
         'max_concurrent_requests': 6,
         'queue_enabled': True,
         'priority_handling': True,
-        'load_balancing': 'least_loaded'
+        'load_balancing': 'least_loaded',
+        'memory_aware_scheduling': True,      # Schedule requests based on memory availability
+        'memory_threshold_rejection': 0.95   # Reject requests if memory usage >95%
+    },
+
+    # Memory monitoring for API
+    'memory_monitoring': {
+        'enabled': True,
+        'include_in_responses': True,         # Include memory info in API responses
+        'log_memory_per_request': True,       # Log memory usage per request
+        'memory_alerts': True,                # Enable memory usage alerts
+        'alert_threshold': 0.8               # Alert if memory usage >80%
     }
 }
 
@@ -301,7 +342,7 @@ API_CONFIG = {
 
 def get_config() -> Dict[str, Any]:
     """
-    Get application configuration
+    Get application configuration with memory management settings
     """
     config = {
         'osrm': OSRM_CONFIG.copy(),
@@ -330,10 +371,20 @@ def get_config() -> Dict[str, Any]:
         # Backward compatibility with old environment variable name
         config['cuopt']['concurrent_execution']['max_concurrent_instances'] = int(os.getenv('CUOPT_CONCURRENT_SOLVERS'))
 
+    # Override memory settings if environment variables are set
+    if os.getenv('CUOPT_MEMORY_PER_INSTANCE'):
+        config['cuopt']['concurrent_execution']['memory_pool_per_instance'] = int(os.getenv('CUOPT_MEMORY_PER_INSTANCE'))
+
+    if os.getenv('CUOPT_ENABLE_MEMORY_MONITORING'):
+        config['cuopt']['memory_management']['enable_memory_monitoring'] = os.getenv('CUOPT_ENABLE_MEMORY_MONITORING').lower() == 'true'
+
+    if os.getenv('CUOPT_AGGRESSIVE_CLEANUP'):
+        config['cuopt']['memory_management']['aggressive_cleanup'] = os.getenv('CUOPT_AGGRESSIVE_CLEANUP').lower() == 'true'
+
     return config
 
 # =============================================================================
-# Performance Helper Functions - Enhanced for Concurrent Execution
+# Enhanced Performance Helper Functions - With Memory Management
 # =============================================================================
 
 def get_optimal_time_limit(problem_size: int, concurrent_mode: bool = False) -> float:
@@ -392,29 +443,44 @@ def get_concurrent_solver_config() -> Dict[str, Any]:
 
     return concurrent_config
 
-def should_use_concurrent_execution(problem_count: int = 1) -> bool:
+def should_use_concurrent_execution(problem_count: int = 1, current_memory_usage: float = 0.0) -> bool:
     """
-    Determine if concurrent execution should be used
+    Determine if concurrent execution should be used based on problem count and memory usage
 
     Args:
         problem_count: Number of problems to solve
+        current_memory_usage: Current memory usage as percentage (0.0-1.0)
 
     Returns:
         bool: True if concurrent execution should be used
     """
     config = get_config()
     concurrent_config = config['cuopt']['concurrent_execution']
+    memory_config = config['optimization']['memory_optimization']
 
-    return (concurrent_config['enabled'] and
-            problem_count >= 1 and
-            concurrent_config['max_concurrent_instances'] > 1)
+    # Check if concurrent execution is enabled
+    if not concurrent_config['enabled']:
+        return False
 
-def calculate_memory_per_instance(total_gpu_memory_gb: float) -> int:
+    # Check if we have enough instances for the problem count
+    if problem_count < 1 or concurrent_config['max_concurrent_instances'] <= 1:
+        return False
+
+    # Check memory constraints
+    if memory_config['enable_memory_aware_scheduling']:
+        memory_threshold = memory_config['memory_threshold_for_sequential']
+        if current_memory_usage > memory_threshold:
+            return False
+
+    return True
+
+def calculate_memory_per_instance(total_gpu_memory_gb: float, safety_margin: float = 0.2) -> int:
     """
-    Calculate optimal memory allocation per solver instance
+    Calculate optimal memory allocation per solver instance with safety margin
 
     Args:
         total_gpu_memory_gb: Total GPU memory in GB
+        safety_margin: Safety margin as percentage (default 20%)
 
     Returns:
         int: Memory per solver instance in MB
@@ -423,8 +489,8 @@ def calculate_memory_per_instance(total_gpu_memory_gb: float) -> int:
     concurrent_config = config['cuopt']['concurrent_execution']
     max_instances = concurrent_config['max_concurrent_instances']
 
-    # Reserve 20% of memory for system overhead
-    available_memory_gb = total_gpu_memory_gb * 0.8
+    # Reserve safety margin for system overhead
+    available_memory_gb = total_gpu_memory_gb * (1.0 - safety_margin)
     memory_per_instance_gb = available_memory_gb / max_instances
 
     # Convert to MB and ensure minimum allocation
@@ -432,13 +498,49 @@ def calculate_memory_per_instance(total_gpu_memory_gb: float) -> int:
 
     return min(memory_per_instance_mb, concurrent_config['memory_pool_per_instance'])
 
+def get_memory_cleanup_config() -> Dict[str, Any]:
+    """
+    Get memory cleanup configuration settings
+
+    Returns:
+        dict: Memory cleanup configuration
+    """
+    config = get_config()
+    return config['cuopt']['memory_management']
+
+def should_force_memory_cleanup(operation_count: int) -> bool:
+    """
+    Determine if forced memory cleanup should be performed
+
+    Args:
+        operation_count: Number of operations performed since last cleanup
+
+    Returns:
+        bool: True if forced cleanup should be performed
+    """
+    config = get_config()
+    memory_config = config['cuopt']['memory_management']
+
+    return (memory_config['aggressive_cleanup'] and
+            operation_count >= memory_config['force_cleanup_interval'])
+
+def get_memory_warning_threshold() -> float:
+    """
+    Get memory usage threshold for warnings
+
+    Returns:
+        float: Memory warning threshold as percentage (0.0-1.0)
+    """
+    config = get_config()
+    return config['cuopt']['memory_management']['memory_warning_threshold']
+
 # =============================================================================
-# Validation functions
+# Enhanced Validation functions with Memory Checks
 # =============================================================================
 
 def validate_config() -> bool:
     """
-    Validate configuration settings including concurrent execution
+    Validate configuration settings including concurrent execution and memory management
     """
     config = get_config()
 
@@ -482,6 +584,17 @@ def validate_config() -> bool:
 
         print(f"✅ Concurrent execution configured: {max_instances} solver instances (threads + CUDA streams)")
 
+    # Validate memory management configuration
+    memory_config = config['cuopt']['memory_management']
+    if memory_config['enable_memory_monitoring']:
+        print("✅ GPU memory monitoring enabled")
+
+        if memory_config['aggressive_cleanup']:
+            print("✅ Aggressive memory cleanup enabled")
+
+        if memory_config['enable_context_managers']:
+            print("✅ Memory context managers enabled")
+
     # Validate file paths
     for path_key in ['input_data_path', 'output_data_path', 'logs_path']:
         path = config['data'][path_key]
@@ -515,6 +628,15 @@ def validate_config() -> bool:
         print("Error: solver time_limit must be positive")
         return False
 
+    # Validate memory thresholds
+    memory_optimization = config['optimization']['memory_optimization']
+    if memory_optimization['memory_threshold_for_sequential'] > 1.0:
+        print("Warning: memory_threshold_for_sequential should be <= 1.0")
+
+    api_memory = config['api']['memory_monitoring']
+    if api_memory['alert_threshold'] > 1.0:
+        print("Warning: memory alert_threshold should be <= 1.0")
+
     print("✅ Configuration validation passed")
     return True
 
@@ -547,7 +669,7 @@ def convert_time_from_minutes(value: float, unit: str) -> float:
 
 def setup_logging(config: Optional[Dict[str, Any]] = None) -> None:
     """
-    Setup logging configuration for the application
+    Setup logging configuration for the application with memory logging
 
     Args:
         config: Optional config override, uses global CONFIG if None
@@ -624,6 +746,12 @@ if __name__ == "__main__":
     print(f"Concurrent Instances: {concurrent_config['max_concurrent_instances']}")
     print(f"Solver Threads: {concurrent_config['max_concurrent_solvers']}")
     print(f"CUDA Streams: {concurrent_config['cuda_streams']}")
+
+    # Memory management info
+    memory_config = get_memory_cleanup_config()
+    print(f"Memory Management: {'enabled' if memory_config['enable_memory_monitoring'] else 'disabled'}")
+    print(f"Aggressive Cleanup: {'enabled' if memory_config['aggressive_cleanup'] else 'disabled'}")
+    print(f"Context Managers: {'enabled' if memory_config['enable_context_managers'] else 'disabled'}")
 
     # Validate configuration
     if validate_config():

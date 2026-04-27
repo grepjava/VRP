@@ -1,0 +1,42 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #0f1117;
+  color: #e0e6f0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#app { height: 100vh; display: flex; flex-direction: column; }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2d3250; border-radius: 3px; }
+
+input, select, textarea {
+  background: #0f1117;
+  border: 1px solid #2d3250;
+  color: #e0e6f0;
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 13px;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.15s;
+}
+input:focus, select:focus { border-color: #6c63ff; }
+select option { background: #1a1d2e; }
+
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  transition: all 0.15s;
+}
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.leaflet-container { background: #1a1d2e; }
+.leaflet-popup-content-wrapper { background: #1a1d2e; color: #e0e6f0; border: 1px solid #2d3250; }
+.leaflet-popup-tip { background: #1a1d2e; }

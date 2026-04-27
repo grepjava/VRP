@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+
+# OSRM map data (large binary files)
+osrm-data/
+
+# Logs and temp files
+error_log.txt
+*.log
+
+# Node / frontend
+ui/node_modules/
+ui/dist/
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.local

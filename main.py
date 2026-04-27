@@ -1,6 +1,6 @@
 """
 FastAPI application for Technician-WorkOrder optimization
-Enhanced with CUDA Streams and Concurrent Execution Support
+Enhanced with CUDA Streams, Concurrent Execution Support, and GPU Memory Management
 """
 
 import logging
@@ -31,14 +31,16 @@ from core.osrm import validate_osrm_connection
 solver_available = False
 cuopt_status_func = None
 concurrent_manager = None
+get_gpu_memory_info_func = None
 
 try:
     from core.solver import (
         TechnicianWorkOrderSolver, is_cuopt_available, get_cuopt_status,
         get_concurrent_solver_manager, solve_optimization_problems_concurrent,
-        ConcurrentSolverManager
+        ConcurrentSolverManager, get_gpu_memory_info
     )
     cuopt_status_func = get_cuopt_status  # Store the function with a different name
+    get_gpu_memory_info_func = get_gpu_memory_info
     print("✅ Solver module imported successfully")
 
     if is_cuopt_available():
@@ -51,6 +53,7 @@ try:
             try:
                 concurrent_manager = get_concurrent_solver_manager()
                 print(f"✅ Concurrent solver manager initialized with {concurrent_config['max_concurrent_instances']} instances")
+                print("✅ GPU memory management enabled")
             except Exception as e:
                 print(f"⚠️ Failed to initialize concurrent solver manager: {e}")
                 concurrent_manager = None
@@ -80,6 +83,9 @@ except ImportError as e:
     def cuopt_status_func():
         return {"available": False, "error": str(e)}
 
+    def get_gpu_memory_info_func():
+        return {"gpu_used_mb": 0.0, "gpu_total_mb": 0.0, "gpu_usage_percent": 0.0}
+
 
 # Configure logging
 logging.basicConfig(
@@ -97,7 +103,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Application lifespan event handler"""
     # Startup
-    logger.info("Starting Technician WorkOrder Optimization API")
+    logger.info("Starting Technician WorkOrder Optimization API with GPU Memory Management")
 
     # Validate configuration
     if not validate_config():
@@ -114,13 +120,22 @@ async def lifespan(app: FastAPI):
 
         if concurrent_manager:
             logger.info("Concurrent solver manager is ready")
-            print("✅ Concurrent execution enabled")
+            print("✅ Concurrent execution with GPU memory management enabled")
         else:
             logger.info("Concurrent execution not available")
             print("⚠️ Concurrent execution disabled")
     else:
         logger.warning("cuOpt solver is not available")
         print("⚠️ cuOpt solver not available - optimization endpoints will fail")
+
+    # Log GPU memory status
+    try:
+        if get_gpu_memory_info_func:
+            memory_info = get_gpu_memory_info_func()
+            logger.info(f"GPU Memory: {memory_info['gpu_used_mb']:.1f}MB used / {memory_info['gpu_total_mb']:.1f}MB total")
+            print(f"💾 GPU Memory: {memory_info['gpu_used_mb']:.1f}MB used / {memory_info['gpu_total_mb']:.1f}MB total ({memory_info['gpu_usage_percent']:.1f}%)")
+    except Exception as e:
+        logger.warning(f"Could not get GPU memory info: {e}")
 
     logger.info("API startup completed")
 
@@ -137,11 +152,20 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"Error shutting down concurrent solver manager: {e}")
 
+    # Log final GPU memory status
+    try:
+        if get_gpu_memory_info_func:
+            memory_info = get_gpu_memory_info_func()
+            logger.info(f"Final GPU Memory: {memory_info['gpu_used_mb']:.1f}MB used / {memory_info['gpu_total_mb']:.1f}MB total")
+            print(f"💾 Final GPU Memory: {memory_info['gpu_used_mb']:.1f}MB used / {memory_info['gpu_total_mb']:.1f}MB total")
+    except Exception as e:
+        logger.warning(f"Could not get final GPU memory info: {e}")
+
 
 # FastAPI app initialization
 app = FastAPI(
     title="Technician WorkOrder Optimization API",
-    description="API for optimizing technician-workorder assignments using cuOpt and OSRM with CUDA Streams",
+    description="API for optimizing technician-workorder assignments using cuOpt and OSRM with CUDA Streams and GPU Memory Management",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -152,15 +176,15 @@ app = FastAPI(
 if CONFIG['api']['cors_enabled']:
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Configure as needed
-        allow_credentials=True,
+        allow_origins=["*"],
+        allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
 
 # =============================================================================
-# Pydantic Models for Request/Response Validation
+# Enhanced Pydantic Models with Memory Information
 # =============================================================================
 
 class LocationModel(BaseModel):
@@ -309,6 +333,15 @@ class TechnicianRouteModel(BaseModel):
     break_assignment: Optional[AssignmentModel]
 
 
+class MemoryInfoModel(BaseModel):
+    """GPU memory information model"""
+    gpu_used_mb: float = Field(..., description="GPU memory used in MB")
+    gpu_total_mb: float = Field(..., description="Total GPU memory in MB")
+    gpu_usage_percent: float = Field(..., description="GPU memory usage percentage")
+    pinned_used_mb: Optional[float] = Field(None, description="Pinned memory used in MB")
+    pinned_total_mb: Optional[float] = Field(None, description="Total pinned memory in MB")
+
+
 class OptimizationResponseModel(BaseModel):
     """Response model for optimization endpoint"""
     status: str
@@ -323,6 +356,7 @@ class OptimizationResponseModel(BaseModel):
     summary: Dict[str, Any]
     concurrent_execution: Optional[bool] = Field(None, description="Whether concurrent execution was used")
     solver_id: Optional[int] = Field(None, description="ID of solver that processed this request")
+    memory_info: Optional[MemoryInfoModel] = Field(None, description="GPU memory usage information")
 
 
 class BatchOptimizationResponseModel(BaseModel):
@@ -333,6 +367,7 @@ class BatchOptimizationResponseModel(BaseModel):
     success_count: int
     failure_count: int
     statistics: Dict[str, Any]
+    memory_summary: Optional[MemoryInfoModel] = Field(None, description="Summary of GPU memory usage")
 
 
 class ErrorResponseModel(BaseModel):
@@ -350,6 +385,7 @@ class HealthResponseModel(BaseModel):
     version: str
     services: Dict[str, str]
     concurrent_execution: Dict[str, Any]
+    memory_info: Optional[MemoryInfoModel] = Field(None, description="Current GPU memory status")
 
 
 # =============================================================================
@@ -368,17 +404,33 @@ async def add_process_time_header(request: Request, call_next):
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    """Log all requests"""
+    """Log all requests with memory monitoring"""
     start_time = time.time()
 
-    # Log request
-    logger.info(f"Request: {request.method} {request.url}")
+    # Log request with initial memory state
+    initial_memory = None
+    try:
+        if get_gpu_memory_info_func:
+            initial_memory = get_gpu_memory_info_func()
+            logger.info(f"Request: {request.method} {request.url} (GPU: {initial_memory['gpu_used_mb']:.1f}MB)")
+        else:
+            logger.info(f"Request: {request.method} {request.url}")
+    except Exception:
+        logger.info(f"Request: {request.method} {request.url}")
 
     response = await call_next(request)
 
-    # Log response
+    # Log response with final memory state
     process_time = time.time() - start_time
-    logger.info(f"Response: {response.status_code} in {process_time:.3f}s")
+    try:
+        if get_gpu_memory_info_func and initial_memory:
+            final_memory = get_gpu_memory_info_func()
+            memory_change = final_memory['gpu_used_mb'] - initial_memory['gpu_used_mb']
+            logger.info(f"Response: {response.status_code} in {process_time:.3f}s (GPU: {final_memory['gpu_used_mb']:.1f}MB, Δ{memory_change:+.1f}MB)")
+        else:
+            logger.info(f"Response: {response.status_code} in {process_time:.3f}s")
+    except Exception:
+        logger.info(f"Response: {response.status_code} in {process_time:.3f}s")
 
     return response
 
@@ -423,13 +475,14 @@ async def root():
         "message": "Technician WorkOrder Optimization API",
         "version": "1.0.0",
         "docs": "/docs",
-        "concurrent_execution": "enabled" if concurrent_manager else "disabled"
+        "concurrent_execution": "enabled" if concurrent_manager else "disabled",
+        "gpu_memory_management": "enabled" if get_gpu_memory_info_func else "disabled"
     }
 
 
 @app.get("/health", response_model=HealthResponseModel)
 async def health_check():
-    """Health check endpoint"""
+    """Health check endpoint with GPU memory monitoring"""
 
     # Check OSRM connectivity
     osrm_status = "ok" if validate_osrm_connection() else "error"
@@ -460,10 +513,20 @@ async def health_check():
                 "cuda_streams": concurrent_config['cuda_streams'],
                 "active_requests": stats.get('active_requests', 0),
                 "total_requests": stats.get('total_requests', 0),
-                "success_rate": stats.get('success_rate', 0.0)
+                "success_rate": stats.get('success_rate', 0.0),
+                "memory_management": True
             }
         except Exception as e:
             concurrent_details = {"enabled": True, "status": "error", "error": str(e)}
+
+    # Get current memory info
+    memory_info = None
+    try:
+        if get_gpu_memory_info_func:
+            memory_data = get_gpu_memory_info_func()
+            memory_info = MemoryInfoModel(**memory_data)
+    except Exception as e:
+        logger.warning(f"Could not get memory info for health check: {e}")
 
     return HealthResponseModel(
         status=overall_status,
@@ -475,24 +538,35 @@ async def health_check():
             "cuopt": cuopt_status,
             "concurrent": concurrent_status
         },
-        concurrent_execution=concurrent_details
+        concurrent_execution=concurrent_details,
+        memory_info=memory_info
     )
 
 
 @app.post("/vrp/optimize", response_model=OptimizationResponseModel)
 async def optimize_routes(request: OptimizationRequestModel):
     """
-    Optimize technician-workorder assignments
+    Optimize technician-workorder assignments with GPU memory management
 
     This endpoint takes a list of technicians and work orders and returns
     an optimized assignment that minimizes travel time while respecting
     all constraints (skills, time windows, breaks, etc.).
 
-    Supports both sequential and concurrent execution modes.
+    Supports both sequential and concurrent execution modes with comprehensive
+    GPU memory monitoring and cleanup.
     """
     try:
         logger.info(f"Optimization request: {len(request.technicians)} technicians, {len(request.work_orders)} work orders")
         print(f"🔍 Starting optimization request...")
+
+        # Get initial memory state
+        initial_memory = None
+        try:
+            if get_gpu_memory_info_func:
+                initial_memory = get_gpu_memory_info_func()
+                print(f"💾 Initial GPU memory: {initial_memory['gpu_used_mb']:.1f}MB used ({initial_memory['gpu_usage_percent']:.1f}%)")
+        except Exception as e:
+            logger.warning(f"Could not get initial memory info: {e}")
 
         # Check if solver is available
         if not solver_available:
@@ -566,6 +640,7 @@ async def optimize_routes(request: OptimizationRequestModel):
 
                 solution = result.solution
                 solver_id = result.solver_id
+                final_memory_from_result = result.memory_info
                 print(f"✅ Concurrent optimization completed: {solution.status.value} (solver {solver_id})")
 
             else:
@@ -573,6 +648,7 @@ async def optimize_routes(request: OptimizationRequestModel):
                 solver = TechnicianWorkOrderSolver(request.config)
                 solution = solver.solve(problem)
                 solver_id = 0
+                final_memory_from_result = None
                 print(f"✅ Sequential optimization completed: {solution.status.value}")
 
         except Exception as e:
@@ -584,11 +660,34 @@ async def optimize_routes(request: OptimizationRequestModel):
                 detail=f"Optimization failed: {str(e)}"
             )
 
+        # Get final memory state
+        final_memory = None
+        try:
+            if get_gpu_memory_info_func:
+                final_memory = get_gpu_memory_info_func()
+                if initial_memory:
+                    memory_change = final_memory['gpu_used_mb'] - initial_memory['gpu_used_mb']
+                    print(f"💾 Final GPU memory: {final_memory['gpu_used_mb']:.1f}MB used ({final_memory['gpu_usage_percent']:.1f}%) [Δ{memory_change:+.1f}MB]")
+                else:
+                    print(f"💾 Final GPU memory: {final_memory['gpu_used_mb']:.1f}MB used ({final_memory['gpu_usage_percent']:.1f}%)")
+        except Exception as e:
+            logger.warning(f"Could not get final memory info: {e}")
+
+        # Use memory info from concurrent result if available, otherwise use final memory
+        memory_info_to_use = final_memory_from_result or final_memory
+
         # Convert solution to response format
         print(f"🔄 Converting solution to response...")
         response_data = optimization_solution_to_json(solution)
         response_data['concurrent_execution'] = use_concurrent
         response_data['solver_id'] = solver_id
+
+        # Add memory information if available
+        if memory_info_to_use:
+            try:
+                response_data['memory_info'] = MemoryInfoModel(**memory_info_to_use)
+            except Exception as e:
+                logger.warning(f"Could not add memory info to response: {e}")
 
         logger.info(f"Optimization completed: {solution.status.value}, {solution.orders_completed} orders assigned")
         print(f"✅ Request completed successfully")
@@ -619,10 +718,10 @@ async def optimize_routes(request: OptimizationRequestModel):
 @app.post("/vrp/optimize-batch", response_model=BatchOptimizationResponseModel)
 async def optimize_routes_batch(request: BatchOptimizationRequestModel):
     """
-    Optimize multiple technician-workorder problems concurrently
+    Optimize multiple technician-workorder problems concurrently with GPU memory management
 
     This endpoint processes multiple optimization problems simultaneously
-    using CUDA streams for maximum throughput.
+    using CUDA streams for maximum throughput while monitoring GPU memory usage.
     """
     try:
         if not concurrent_manager:
@@ -633,6 +732,15 @@ async def optimize_routes_batch(request: BatchOptimizationRequestModel):
 
         start_time = time.time()
         print(f"🚀 Starting batch optimization: {len(request.problems)} problems")
+
+        # Get initial memory state
+        initial_memory = None
+        try:
+            if get_gpu_memory_info_func:
+                initial_memory = get_gpu_memory_info_func()
+                print(f"💾 Initial GPU memory: {initial_memory['gpu_used_mb']:.1f}MB used ({initial_memory['gpu_usage_percent']:.1f}%)")
+        except Exception as e:
+            logger.warning(f"Could not get initial memory info: {e}")
 
         # Convert all problems
         problems = []
@@ -659,6 +767,19 @@ async def optimize_routes_batch(request: BatchOptimizationRequestModel):
 
         total_time = time.time() - start_time
 
+        # Get final memory state
+        final_memory = None
+        try:
+            if get_gpu_memory_info_func:
+                final_memory = get_gpu_memory_info_func()
+                if initial_memory:
+                    memory_change = final_memory['gpu_used_mb'] - initial_memory['gpu_used_mb']
+                    print(f"💾 Final GPU memory: {final_memory['gpu_used_mb']:.1f}MB used ({final_memory['gpu_usage_percent']:.1f}%) [Δ{memory_change:+.1f}MB]")
+                else:
+                    print(f"💾 Final GPU memory: {final_memory['gpu_used_mb']:.1f}MB used ({final_memory['gpu_usage_percent']:.1f}%)")
+        except Exception as e:
+            logger.warning(f"Could not get final memory info: {e}")
+
         # Convert solutions to response format
         results = []
         success_count = 0
@@ -669,6 +790,14 @@ async def optimize_routes_batch(request: BatchOptimizationRequestModel):
                 response_data = optimization_solution_to_json(solution)
                 response_data['concurrent_execution'] = True
                 response_data['solver_id'] = i  # Simplified for batch mode
+
+                # Add memory info if available
+                if final_memory:
+                    try:
+                        response_data['memory_info'] = MemoryInfoModel(**final_memory)
+                    except Exception:
+                        pass  # Skip memory info if conversion fails
+
                 results.append(OptimizationResponseModel(**response_data))
 
                 if solution.status != SolutionStatus.ERROR:
@@ -704,13 +833,22 @@ async def optimize_routes_batch(request: BatchOptimizationRequestModel):
         except Exception as e:
             logger.warning(f"Failed to get statistics: {e}")
 
+        # Create memory summary
+        memory_summary = None
+        if final_memory:
+            try:
+                memory_summary = MemoryInfoModel(**final_memory)
+            except Exception as e:
+                logger.warning(f"Could not create memory summary: {e}")
+
         response = BatchOptimizationResponseModel(
             results=results,
             total_time=total_time,
             concurrent_execution=True,
             success_count=success_count,
             failure_count=failure_count,
-            statistics=statistics
+            statistics=statistics,
+            memory_summary=memory_summary
         )
 
         print(f"✅ Batch optimization completed: {success_count} success, {failure_count} failed in {total_time:.3f}s")
@@ -758,11 +896,21 @@ async def validate_problem(request: OptimizationRequestModel):
         # Validate problem
         validation_issues = problem.validate()
 
+        # Get current memory info for validation response
+        memory_info = None
+        try:
+            if get_gpu_memory_info_func:
+                memory_data = get_gpu_memory_info_func()
+                memory_info = MemoryInfoModel(**memory_data)
+        except Exception:
+            pass
+
         return {
             "valid": len(validation_issues) == 0,
             "issues": validation_issues,
             "summary": problem.to_summary_dict(),
-            "concurrent_capable": concurrent_manager is not None
+            "concurrent_capable": concurrent_manager is not None,
+            "memory_info": memory_info
         }
 
     except ConversionError as e:
@@ -770,13 +918,14 @@ async def validate_problem(request: OptimizationRequestModel):
             "valid": False,
             "issues": [f"Conversion error: {str(e)}"],
             "summary": {},
-            "concurrent_capable": False
+            "concurrent_capable": False,
+            "memory_info": None
         }
 
 
 @app.get("/cuopt/status")
 async def get_cuopt_status_endpoint():
-    """Get detailed cuOpt status information"""
+    """Get detailed cuOpt status information with memory monitoring"""
     try:
         if solver_available:
             status_info = cuopt_status_func()
@@ -799,15 +948,26 @@ async def get_cuopt_status_endpoint():
                     "max_concurrent_instances": concurrent_config['max_concurrent_instances'],
                     "solver_threads": concurrent_config['max_concurrent_solvers'],
                     "cuda_streams": concurrent_config['cuda_streams'],
+                    "memory_management": True,
                     "statistics": stats
                 }
             except Exception as e:
                 concurrent_info = {"enabled": True, "error": str(e)}
 
+        # Get current memory info
+        memory_info = None
+        try:
+            if get_gpu_memory_info_func:
+                memory_data = get_gpu_memory_info_func()
+                memory_info = MemoryInfoModel(**memory_data)
+        except Exception as e:
+            logger.warning(f"Could not get memory info for cuOpt status: {e}")
+
         return {
             "solver_available": solver_available,
             "cuopt_details": status_info,
             "concurrent_execution": concurrent_info,
+            "memory_info": memory_info,
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
@@ -815,13 +975,14 @@ async def get_cuopt_status_endpoint():
             "solver_available": False,
             "cuopt_details": {"error": str(e)},
             "concurrent_execution": {"enabled": False, "error": str(e)},
+            "memory_info": None,
             "timestamp": datetime.now().isoformat()
         }
 
 
 @app.get("/concurrent/statistics")
 async def get_concurrent_statistics():
-    """Get concurrent solver statistics"""
+    """Get concurrent solver statistics with memory information"""
     if not concurrent_manager:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -830,14 +991,50 @@ async def get_concurrent_statistics():
 
     try:
         stats = concurrent_manager.get_statistics()
+
+        # Add current memory info to statistics
+        memory_info = None
+        try:
+            if get_gpu_memory_info_func:
+                memory_data = get_gpu_memory_info_func()
+                memory_info = MemoryInfoModel(**memory_data)
+        except Exception:
+            pass
+
         return {
             "statistics": stats,
+            "memory_info": memory_info,
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get statistics: {str(e)}"
+        )
+
+
+@app.get("/memory/status")
+async def get_memory_status():
+    """Get current GPU memory status"""
+    try:
+        if not get_gpu_memory_info_func:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="GPU memory monitoring is not available"
+            )
+
+        memory_data = get_gpu_memory_info_func()
+        memory_info = MemoryInfoModel(**memory_data)
+
+        return {
+            "memory_info": memory_info,
+            "timestamp": datetime.now().isoformat(),
+            "memory_management": "enabled"
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get memory status: {str(e)}"
         )
 
 
@@ -857,9 +1054,14 @@ async def get_configuration():
             "max_locations_per_request": CONFIG['osrm']['max_locations_per_request'],
             "timeout": CONFIG['osrm']['timeout']
         },
-        "concurrent_execution": get_concurrent_solver_config()
+        "concurrent_execution": get_concurrent_solver_config(),
+        "memory_management": {
+            "enabled": get_gpu_memory_info_func is not None,
+            "monitoring": True
+        }
     }
     return safe_config
+
 
 
 # =============================================================================
@@ -882,8 +1084,13 @@ def main():
         print(f"   Max concurrent instances: {concurrent_config['max_concurrent_instances']}")
         print(f"   Solver threads: {concurrent_config['max_concurrent_solvers']}")
         print(f"   CUDA streams: {concurrent_config['cuda_streams']}")
+        print(f"   GPU memory management: enabled")
     else:
         print(f"🚀 Server starting with sequential execution only")
+        if get_gpu_memory_info_func:
+            print(f"   GPU memory management: enabled")
+        else:
+            print(f"   GPU memory management: disabled")
 
     uvicorn.run(
         "main:app",

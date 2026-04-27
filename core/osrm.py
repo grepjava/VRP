@@ -17,6 +17,8 @@ from core.models import Location, DistanceMatrix
 
 logger = logging.getLogger(__name__)
 
+_matrix_cache: Dict[tuple, DistanceMatrix] = {}
+
 
 class OSRMError(Exception):
     """Custom exception for OSRM-related errors"""
@@ -442,20 +444,20 @@ class OSRMClient:
 # Convenience functions
 def calculate_matrix_for_problem(technicians: List, work_orders: List) -> DistanceMatrix:
     """Calculate distance matrix for a complete optimization problem"""
-    # Extract all locations
-    locations = []
+    locations = (
+        [tech.start_location for tech in technicians] +
+        [order.location for order in work_orders]
+    )
 
-    # Add technician start locations
-    for tech in technicians:
-        locations.append(tech.start_location)
+    cache_key = tuple((loc.latitude, loc.longitude) for loc in locations)
+    if cache_key in _matrix_cache:
+        logger.debug("OSRM matrix cache hit (%d locations)", len(locations))
+        return _matrix_cache[cache_key]
 
-    # Add work order locations
-    for order in work_orders:
-        locations.append(order.location)
-
-    # Create OSRM client and calculate matrix
     client = OSRMClient()
-    return client.create_distance_matrix(locations)
+    result = client.create_distance_matrix(locations)
+    _matrix_cache[cache_key] = result
+    return result
 
 
 def validate_osrm_connection() -> bool:
