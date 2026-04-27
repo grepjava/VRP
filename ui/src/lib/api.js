@@ -1,4 +1,6 @@
-const BASE = 'http://localhost:8000'
+// In Docker: VITE_API_URL is empty and nginx proxies /vrp/* → api:8000
+// In dev:    set VITE_API_URL=http://localhost:8000 in ui/.env.local
+const BASE = import.meta.env.VITE_API_URL ?? ''
 
 export async function optimize(technicians, workOrders, config = null) {
   const body = { technicians, work_orders: workOrders }

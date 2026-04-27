@@ -1,0 +1,52 @@
+services:
+
+  osrm:
+    image: osrm/osrm-backend
+    command: osrm-routed --algorithm mld --max-table-size 10000 /data/${OSRM_FILE}
+    volumes:
+      - ./osrm-data:/data:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Override to match your CUDA version: rapidsai/base:<release>-cuda<X.Y>-py<Z>
+        RAPIDS_IMAGE: rapidsai/base:25.02-cuda12.5-py3.12
+    depends_on:
+      osrm:
+        condition: service_healthy
+    environment:
+      OSRM_HOST: osrm
+      OSRM_PORT: 5000
+      CUOPT_CONCURRENT_INSTANCES: ${CUOPT_CONCURRENT_INSTANCES:-4}
+      CUOPT_MEMORY_PER_INSTANCE: ${CUOPT_MEMORY_PER_INSTANCE:-1024}
+      GPU_MEMORY_INITIAL: ${GPU_MEMORY_INITIAL:-1073741824}
+      GPU_MEMORY_MAX: ${GPU_MEMORY_MAX:-8589934592}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    depends_on:
+      - api
+    ports:
+      - "${UI_PORT:-80}:80"
+    restart: unless-stopped

@@ -30,3 +30,4 @@ ui/dist/
 # Environment
 .env
 .env.local
+ui/.env.local

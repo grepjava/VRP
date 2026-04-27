@@ -1,0 +1,12 @@
+osrm-data/
+ui/
+__pycache__/
+core/__pycache__/
+*.pyc
+.git/
+.env
+*.log
+error_log.txt
+data/
+logs/
+results/

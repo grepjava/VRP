@@ -381,6 +381,12 @@ def get_config() -> Dict[str, Any]:
     if os.getenv('CUOPT_AGGRESSIVE_CLEANUP'):
         config['cuopt']['memory_management']['aggressive_cleanup'] = os.getenv('CUOPT_AGGRESSIVE_CLEANUP').lower() == 'true'
 
+    if os.getenv('GPU_MEMORY_INITIAL'):
+        config['cuopt']['memory_management']['initial_pool_size'] = int(os.getenv('GPU_MEMORY_INITIAL'))
+
+    if os.getenv('GPU_MEMORY_MAX'):
+        config['cuopt']['memory_management']['maximum_pool_size'] = int(os.getenv('GPU_MEMORY_MAX'))
+
     return config
 
 # =============================================================================
