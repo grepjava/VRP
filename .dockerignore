@@ -2,6 +2,9 @@ osrm-data/
 *.osm.pbf
 *.osrm
 *.osrm.*
+.venv/
+venv/
+env/
 ui/
 __pycache__/
 core/__pycache__/
