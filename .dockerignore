@@ -1,4 +1,7 @@
 osrm-data/
+*.osm.pbf
+*.osrm
+*.osrm.*
 ui/
 __pycache__/
 core/__pycache__/

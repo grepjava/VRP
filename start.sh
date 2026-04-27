@@ -7,7 +7,7 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
-docker compose up -d
+docker compose up -d --no-build
 
 source .env
 echo "UI:   http://localhost:${UI_PORT:-80}"
