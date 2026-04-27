@@ -1112,18 +1112,26 @@ class TechnicianWorkOrderSolver:
             except AttributeError:
                 logger.warning("set_vehicle_fixed_costs not available in this cuOpt version — skipping")
 
-        # 12. Balance workload — cap total route time per vehicle (travel + service + wait)
+        # 12. Balance workload — cap total service time per vehicle via a capacity dimension.
+        #     Using add_capacity_dimension instead of set_vehicle_max_times avoids the solver
+        #     gaming the constraint by pushing all routes to late in the day.
         max_route_hours = self.config.get('max_route_hours', None)
         if max_route_hours:
-            cap = float(max_route_hours) * 60.0  # convert hours → minutes
+            cap_minutes = int(float(max_route_hours) * 60)
             try:
-                with cudf_memory_context("vehicle max times"):
-                    max_times = np.full(n_technicians, cap, dtype=np.float32)
-                    data_model.set_vehicle_max_times(cudf.Series(max_times))
-                logger.info(f"   ⏱ Vehicle max time: {max_route_hours}h ({cap:.0f} min) per technician")
+                with cudf_memory_context("workload capacity dimension"):
+                    order_demands = cudf.Series(
+                        [wo.service_time for wo in problem.work_orders],
+                        dtype=np.int32
+                    )
+                    vehicle_capacities = cudf.Series(
+                        [cap_minutes] * n_technicians,
+                        dtype=np.int32
+                    )
+                    data_model.add_capacity_dimension("workload", order_demands, vehicle_capacities)
+                logger.info(f"   ⏱ Workload cap: {max_route_hours}h ({cap_minutes} min) service time per technician")
             except Exception as e:
-                logger.warning(f"set_vehicle_max_times failed ({type(e).__name__}: {e}) — using min_vehicles fallback")
-                # Fallback: request all vehicles so solver distributes work across all technicians
+                logger.warning(f"add_capacity_dimension failed ({type(e).__name__}: {e}) — using min_vehicles fallback")
                 try:
                     data_model.set_min_vehicles(n_technicians)
                     logger.info(f"   ⏱ Balance workload fallback: set_min_vehicles({n_technicians})")
