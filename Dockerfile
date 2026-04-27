@@ -4,7 +4,7 @@
 # rapidsai/base ships with cuDF, RMM, and conda pre-configured.
 # Adjust the tag to match your CUDA version and desired RAPIDS release.
 # Tag list: https://hub.docker.com/r/rapidsai/base/tags
-ARG RAPIDS_IMAGE=rapidsai/base:26.06a-cuda13-py3.12-amd64
+ARG RAPIDS_IMAGE=rapidsai/base:26.06a-cuda13-py3.13-amd64
 FROM ${RAPIDS_IMAGE}
 
 SHELL ["/bin/bash", "-c"]

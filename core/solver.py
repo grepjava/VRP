@@ -4,6 +4,7 @@ ULTRA HIGH PERFORMANCE VERSION WITH CUDA STREAMS AND GPU MEMORY MANAGEMENT
 Following the cuOpt service team routing notebook patterns with aggressive optimizations,
 concurrent execution using CUDA streams, and comprehensive GPU memory cleanup
 """
+from __future__ import annotations
 
 import logging
 import time
@@ -67,6 +68,9 @@ except ImportError as e:
     print(f"❌ cuOpt import failed: {e}")
     print("⚠️ Solver will not be available")
     cuopt_available = False
+    DataModel = None
+    SolverSettings = None
+    Solve = None
 
 from config import CONFIG, get_optimal_time_limit, get_concurrent_solver_config
 from core.models import (

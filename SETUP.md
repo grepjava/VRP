@@ -259,7 +259,7 @@ These can be passed as `--build-arg` or set in `docker-compose.yml`:
 
 | Argument | Default | Description |
 |---|---|---|
-| `RAPIDS_IMAGE` | `rapidsai/base:25.02-cuda12.5-py3.12` | Base image for the API container. Change to match your CUDA version. Available tags: https://hub.docker.com/r/rapidsai/base/tags |
+| `RAPIDS_IMAGE` | `rapidsai/base:26.06a-cuda13-py3.13-amd64` | Base image for the API container. Change to match your CUDA version. Available tags: https://hub.docker.com/r/rapidsai/base/tags |
 | `VITE_API_URL` | _(empty)_ | API base URL baked into the UI build. Empty = use nginx proxy (Docker). Set to `http://localhost:8000` for standalone UI builds. |
 
 To change the RAPIDS base image in `docker-compose.yml`:
@@ -435,7 +435,7 @@ https://hub.docker.com/r/rapidsai/base/tags
 
 ```yaml
 args:
-  RAPIDS_IMAGE: rapidsai/base:26.06a-cuda13-py3.12-amd64   # match your CUDA version
+  RAPIDS_IMAGE: rapidsai/base:26.06a-cuda13-py3.13-amd64   # match your CUDA version
 ```
 
 ### "Time matrix should be set" error from cuOpt

@@ -21,7 +21,7 @@ services:
       dockerfile: Dockerfile
       args:
         # Override to match your CUDA version: rapidsai/base:<release>-cuda<X.Y>-py<Z>
-        RAPIDS_IMAGE: rapidsai/base:26.06a-cuda13-py3.12-amd64
+        RAPIDS_IMAGE: rapidsai/base:26.06a-cuda13-py3.13-amd64
     depends_on:
       osrm:
         condition: service_healthy
