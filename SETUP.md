@@ -4,12 +4,12 @@
 
 There are two ways to run this project. **Pick one — they are not combined.**
 
-| | Docker (`setup.sh`) | Dev (`start.sh`) |
+| | Docker (`start.sh` / `stop.sh`) | Dev (`start-dev.sh`) |
 |---|---|---|
 | **Use when** | Running in production, sharing with others | Actively changing backend or UI code |
-| **First run** | `./setup.sh` | `./start.sh` |
-| **Start (day 2+)** | `docker compose up -d` | `./start.sh` |
-| **Stop** | `docker compose down` | `Ctrl+C` |
+| **First run** | `./setup.sh` | `./start-dev.sh` |
+| **Start (day 2+)** | `./start.sh` | `./start-dev.sh` |
+| **Stop** | `./stop.sh` | `Ctrl+C` |
 | **Hot reload** | No (rebuild image to update) | Yes (API + UI auto-reload on save) |
 
 ---
