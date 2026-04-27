@@ -11,7 +11,7 @@ Real-time Vehicle Routing Problem solver for field service operations. Dispatche
 - Assigns technicians to work orders optimally, minimising total travel time
 - Respects time windows, shift hours, lunch breaks, and daily order limits
 - Optional skill matching — only qualified technicians get assigned
-- Optional workload balancing — caps route time per technician
+- Optional workload balancing — caps total service time per technician so work is spread evenly
 - Real road travel times via OSRM (not straight-line estimates)
 - Interactive map with colour-coded routes and priority legends
 
@@ -63,7 +63,7 @@ The UI exposes four cuOpt settings via the ⚙ Settings panel:
 |---|---|---|
 | Enforce skill matching | `add_order_vehicle_match` | Hard constraint — only assigns qualified technicians |
 | Minimize fleet size | `set_vehicle_fixed_costs` | Penalises deploying extra vehicles |
-| Balance workload | `set_vehicle_max_times` | Caps total route time per technician |
+| Balance workload | `add_capacity_dimension` | Caps total service time per technician — prevents overloading without pushing routes to late in the day |
 | Custom time limit | `SolverSettings.set_time_limit` | More time = better solution quality |
 
 ## API

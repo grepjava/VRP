@@ -348,7 +348,7 @@ Content-Type: application/json
 |---|---|---|
 | `enforce_skill_constraints` | bool | Only assign technicians with required skills |
 | `vehicle_fixed_cost` | number | Fixed penalty per technician deployed (higher = fewer vehicles) |
-| `max_route_hours` | number | Cap total route time per technician (hours) |
+| `max_route_hours` | number | Cap total service time per technician (hours) — work is spread evenly without shifting routes to late in the day |
 | `time_limit_override` | number | Solver time limit in seconds |
 
 **Response:**
