@@ -3,5 +3,11 @@ import { svelte } from '@sveltejs/vite-plugin-svelte'
 
 export default defineConfig({
   plugins: [svelte()],
-  server: { port: 3000, open: false }
+  server: {
+    port: 3000,
+    open: false,
+    proxy: {
+      '/osrm': { target: 'http://localhost:5000', rewrite: path => path.replace(/^\/osrm/, '') }
+    }
+  }
 })

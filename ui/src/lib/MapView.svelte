@@ -128,7 +128,7 @@
 
       try {
         const coord = pts.map(([ln, lt]) => `${ln},${lt}`).join(';')
-        const res = await fetch(`http://localhost:5000/route/v1/driving/${coord}?overview=full&geometries=geojson`)
+        const res = await fetch(`/osrm/route/v1/driving/${coord}?overview=full&geometries=geojson`)
         const data = await res.json()
         if (data.routes?.[0]?.geometry) {
           const layer = L.geoJSON(data.routes[0].geometry, {
