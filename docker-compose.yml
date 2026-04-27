@@ -7,7 +7,7 @@ services:
       - ./osrm-data:/data:ro
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/ || exit 1"]
+      test: ["CMD", "bash", "-c", "echo >/dev/tcp/localhost/5000"]
       interval: 10s
       timeout: 5s
       retries: 10
