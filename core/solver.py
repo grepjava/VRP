@@ -1017,14 +1017,11 @@ class TechnicianWorkOrderSolver:
         # 1. Set cost matrix + transit time matrix (same duration data, different purposes:
         #    cost drives objective, transit time drives time-window/max-time constraints)
         with cudf_memory_context("cost matrix creation"):
-            # Replace any None/null values (OSRM returns null for unreachable pairs)
-            # with a large travel time so cuOpt treats them as infeasible routes.
-            _BIG = 1e9
-            sanitized = [
-                [_BIG if v is None else float(v) for v in row]
-                for row in problem.distance_matrix.durations
-            ]
-            cost_matrix = cudf.DataFrame(sanitized, dtype=np.float32)
+            # Convert to float32 numpy array — None becomes nan, then replace
+            # nan/inf with a large value so cuOpt treats them as infeasible routes.
+            raw = np.array(problem.distance_matrix.durations, dtype=np.float32)
+            np.nan_to_num(raw, nan=1e7, posinf=1e7, neginf=0.0, copy=False)
+            cost_matrix = cudf.DataFrame(raw)
             data_model.add_cost_matrix(cost_matrix)
             try:
                 data_model.add_transit_time_matrix(cost_matrix)

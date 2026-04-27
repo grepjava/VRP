@@ -301,7 +301,7 @@
             <label class="toggle-row" for="chk-balance">
               <div class="toggle-info">
                 <span class="setting-name">Balance workload</span>
-                <span class="setting-api">set_vehicle_max_times</span>
+                <span class="setting-api">add_capacity_dimension</span>
                 <span class="setting-desc">Cap the maximum total time (travel + service) per technician. Forces the solver to spread work rather than overload one person.</span>
               </div>
               <input id="chk-balance" type="checkbox" bind:checked={settings.balance_workload} />
