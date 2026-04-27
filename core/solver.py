@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import time
+from collections import OrderedDict
 import cudf
 import numpy as np
 import asyncio
@@ -21,15 +22,17 @@ from threading import Lock, Event
 from contextlib import contextmanager
 import uuid
 
+logger = logging.getLogger(__name__)
+
 # Import cuOpt with proper error handling
 cuopt_available = False
 
-print("🔍 Attempting to import cuOpt routing module...")
+logger.info("🔍 Attempting to import cuOpt routing module...")
 
 try:
     from cuopt.routing import DataModel, SolverSettings, Solve
     cuopt_available = True
-    print("✅ cuOpt routing imported successfully")
+    logger.info("✅ cuOpt routing imported successfully")
 
     # Initialize GPU memory management with enhanced pool for concurrent execution
     try:
@@ -43,11 +46,11 @@ try:
             initial_pool_size=memory_config['initial_pool_size'],
             maximum_pool_size=memory_config['maximum_pool_size']
         )
-        print("✅ GPU memory pool initialized for concurrent execution")
+        logger.info("✅ GPU memory pool initialized for concurrent execution")
     except ImportError:
-        print("⚠️ rmm not available, using default GPU memory management")
+        logger.warning("⚠️ rmm not available, using default GPU memory management")
     except Exception as e:
-        print(f"⚠️ GPU memory pool initialization failed: {e}")
+        logger.warning(f"⚠️ GPU memory pool initialization failed: {e}")
 
     # Initialize CUDA streams for concurrent execution
     try:
@@ -56,17 +59,17 @@ try:
         concurrent_config = config['cuopt']['concurrent_execution']
         if concurrent_config['enabled']:
             max_instances = concurrent_config['max_concurrent_instances']
-            print(f"🚀 Initializing {max_instances} CUDA streams...")
+            logger.info(f"🚀 Initializing {max_instances} CUDA streams...")
             # We'll create streams in the ConcurrentSolverManager
-            print("✅ CUDA streams support ready")
+            logger.info("✅ CUDA streams support ready")
     except ImportError:
-        print("⚠️ CuPy not available, CUDA streams will be limited")
+        logger.warning("⚠️ CuPy not available, CUDA streams will be limited")
     except Exception as e:
-        print(f"⚠️ CUDA streams initialization failed: {e}")
+        logger.warning(f"⚠️ CUDA streams initialization failed: {e}")
 
 except ImportError as e:
-    print(f"❌ cuOpt import failed: {e}")
-    print("⚠️ Solver will not be available")
+    logger.error(f"❌ cuOpt import failed: {e}")
+    logger.warning("⚠️ Solver will not be available")
     cuopt_available = False
     DataModel = None
     SolverSettings = None
@@ -78,8 +81,6 @@ from core.models import (
     Technician, WorkOrder, Priority, SolutionStatus, DistanceMatrix
 )
 from core.osrm import calculate_matrix_for_problem
-
-logger = logging.getLogger(__name__)
 
 
 class SolverError(Exception):
@@ -368,9 +369,9 @@ class CUDAStreamManager:
                 stream = cp.cuda.Stream(non_blocking=True)
                 self.streams.append(stream)
                 self.available_streams.put(i)
-            print(f"✅ Created {num_streams} CUDA streams")
+            logger.info(f"✅ Created {num_streams} CUDA streams")
         except Exception as e:
-            print(f"⚠️ Failed to create CUDA streams: {e}")
+            logger.warning(f"⚠️ Failed to create CUDA streams: {e}")
             # Fallback to None streams
             for i in range(num_streams):
                 self.streams.append(None)
@@ -436,8 +437,9 @@ class ConcurrentSolverManager:
 
         self.cuda_streams = CUDAStreamManager(self.num_cuda_streams)
 
-        # Request tracking
-        self.results = {}  # request_id -> SolverResult
+        # Request tracking — capped at 500 entries (oldest evicted) to prevent unbounded growth
+        self.results: OrderedDict = OrderedDict()
+        self._results_max = 500
         self.active_requests = {}  # request_id -> Future
 
         # Thread pool for solver execution
@@ -474,12 +476,12 @@ class ConcurrentSolverManager:
         self.solver_lock = Lock()
 
         logger.info(f"Initialized ConcurrentSolverManager with {self.max_instances} concurrent instances")
-        print("✅ ConcurrentSolverManager initialized with GPU memory management")
-        print(f"   🚀 Max concurrent instances: {self.max_instances}")
-        print(f"   🧵 Solver threads: {self.max_solvers}")
-        print(f"   🎯 CUDA streams: {self.num_cuda_streams}")
-        print(f"   💾 Memory per instance: {self.concurrent_config['memory_pool_per_instance']}MB")
-        print(f"   🧹 GPU memory cleanup: enabled")
+        logger.info("✅ ConcurrentSolverManager initialized with GPU memory management")
+        logger.info(f"   🚀 Max concurrent instances: {self.max_instances}")
+        logger.info(f"   🧵 Solver threads: {self.max_solvers}")
+        logger.info(f"   🎯 CUDA streams: {self.num_cuda_streams}")
+        logger.info(f"   💾 Memory per instance: {self.concurrent_config['memory_pool_per_instance']}MB")
+        logger.info(f"   🧹 GPU memory cleanup: enabled")
 
     def _get_next_solver_id(self) -> int:
         """Get the next available solver ID using round-robin assignment"""
@@ -569,7 +571,7 @@ class ConcurrentSolverManager:
             with self.stats_lock:
                 self.stats['active_solvers'] += 1
 
-            print(f"🚀 Processing request {request.request_id[:8]} on solver {solver_id}")
+            logger.info(f"🚀 Processing request {request.request_id[:8]} on solver {solver_id}")
 
             # Get initial memory state
             initial_memory = get_gpu_memory_info()
@@ -578,7 +580,7 @@ class ConcurrentSolverManager:
             with gpu_memory_context(solver_id=solver_id, memory_limit_gb=self.memory_limit_per_instance):
                 # Get CUDA stream for this request
                 with self.cuda_streams.get_stream() as (stream_id, stream):
-                    print(f"   🎯 Using CUDA stream {stream_id}")
+                    logger.info(f"   🎯 Using CUDA stream {stream_id}")
 
                     # Get solver instance
                     solver = self.get_solver_instance(solver_id)
@@ -589,7 +591,7 @@ class ConcurrentSolverManager:
                         for key, value in request.config.items():
                             saved_config[key] = solver.config.get(key, '__MISSING__')
                             solver.config[key] = value
-                        print(f"   ⚙️  Request config applied: {list(request.config.keys())}")
+                        logger.info(f"   ⚙️  Request config applied: {list(request.config.keys())}")
 
                     # Set CUDA stream context if available
                     try:
@@ -626,8 +628,10 @@ class ConcurrentSolverManager:
                 memory_info=final_memory
             )
 
-            # Store result
+            # Store result (evict oldest if cap exceeded)
             self.results[request.request_id] = result
+            if len(self.results) > self._results_max:
+                self.results.popitem(last=False)
 
             # Update statistics
             with self.stats_lock:
@@ -640,8 +644,8 @@ class ConcurrentSolverManager:
                 )
                 self.stats['memory_stats']['memory_cleanups'] += 1
 
-            print(f"✅ Completed request {request.request_id[:8]} in {processing_time:.3f}s on solver {solver_id}")
-            print(f"   💾 GPU memory: {final_memory['gpu_used_mb']:.1f}MB used, {final_memory['gpu_usage_percent']:.1f}% utilization")
+            logger.info(f"✅ Completed request {request.request_id[:8]} in {processing_time:.3f}s on solver {solver_id}")
+            logger.info(f"   💾 GPU memory: {final_memory['gpu_used_mb']:.1f}MB used, {final_memory['gpu_usage_percent']:.1f}% utilization")
             return result
 
         except Exception as e:
@@ -665,6 +669,8 @@ class ConcurrentSolverManager:
             )
 
             self.results[request.request_id] = result
+            if len(self.results) > self._results_max:
+                self.results.popitem(last=False)
 
             with self.stats_lock:
                 self.stats['failed_requests'] += 1
@@ -673,7 +679,7 @@ class ConcurrentSolverManager:
                     self.stats['memory_stats']['memory_warnings'] += 1
 
             logger.error(f"Request {request.request_id} failed: {error_msg}")
-            print(f"❌ Request {request.request_id[:8]} failed: {error_msg}")
+            logger.error(f"❌ Request {request.request_id[:8]} failed: {error_msg}")
             return result
 
         finally:
@@ -744,7 +750,7 @@ class ConcurrentSolverManager:
             request_id = self.submit_request(problem, config, priority=i)
             request_ids.append(request_id)
 
-        print(f"🚀 Submitted {len(request_ids)} problems for concurrent processing")
+        logger.info(f"🚀 Submitted {len(request_ids)} problems for concurrent processing")
 
         # Wait for completion
         results = self.wait_for_completion(request_ids, timeout)
@@ -790,7 +796,7 @@ class ConcurrentSolverManager:
 
     def shutdown(self):
         """Shutdown the concurrent solver manager with memory cleanup"""
-        print("🔄 Shutting down ConcurrentSolverManager...")
+        logger.info("🔄 Shutting down ConcurrentSolverManager...")
 
         # Wait for active requests to complete
         for request_id, future in list(self.active_requests.items()):
@@ -812,7 +818,7 @@ class ConcurrentSolverManager:
         except Exception as e:
             logger.warning(f"Final memory cleanup warning: {e}")
 
-        print("✅ ConcurrentSolverManager shutdown complete")
+        logger.info("✅ ConcurrentSolverManager shutdown complete")
 
 
 # =============================================================================
@@ -849,9 +855,9 @@ class TechnicianWorkOrderSolver:
 
         logger.info(f"Initialized TechnicianWorkOrderSolver {solver_id} (concurrent: {concurrent_mode})")
         if concurrent_mode:
-            print(f"✅ TechnicianWorkOrderSolver {solver_id} initialized for concurrent execution with memory management")
+            logger.info(f"✅ TechnicianWorkOrderSolver {solver_id} initialized for concurrent execution with memory management")
         else:
-            print("✅ TechnicianWorkOrderSolver initialized with cuOpt and memory management")
+            logger.info("✅ TechnicianWorkOrderSolver initialized with cuOpt and memory management")
 
     def solve(self, problem: OptimizationProblem) -> OptimizationSolution:
         """Solve the optimization problem with maximum performance and memory management"""
@@ -875,38 +881,38 @@ class TechnicianWorkOrderSolver:
 
                 problem_size = len(problem.technicians) + len(problem.work_orders)
                 solver_prefix = f"[Solver {self.solver_id}]" if self.concurrent_mode else ""
-                print(f"🔍 {solver_prefix} Problem: {len(problem.technicians)} techs, {len(problem.work_orders)} orders (total: {problem_size})")
+                logger.info(f"🔍 {solver_prefix} Problem: {len(problem.technicians)} techs, {len(problem.work_orders)} orders (total: {problem_size})")
 
                 # Step 1: Calculate distance matrix using OSRM
                 matrix_time = 0.0
                 if problem.distance_matrix is None:
-                    print(f"🌐 {solver_prefix} Calculating travel times via OSRM...")
+                    logger.info(f"🌐 {solver_prefix} Calculating travel times via OSRM...")
                     matrix_start = time.time()
                     problem.distance_matrix = calculate_matrix_for_problem(
                         problem.technicians, problem.work_orders
                     )
                     matrix_time = time.time() - matrix_start
-                    print(f"✅ {solver_prefix} Distance matrix calculated in {matrix_time:.3f}s")
+                    logger.info(f"✅ {solver_prefix} Distance matrix calculated in {matrix_time:.3f}s")
 
                 # Step 2: Build cuOpt DataModel with performance optimizations and memory management
-                print(f"🏗️ {solver_prefix} Building cuOpt data model...")
+                logger.info(f"🏗️ {solver_prefix} Building cuOpt data model...")
                 model_start = time.time()
 
                 with cudf_memory_context("data model building"):
                     data_model = self._build_cuopt_model(problem)
 
                 model_time = time.time() - model_start
-                print(f"✅ {solver_prefix} cuOpt data model built in {model_time:.3f}s")
+                logger.info(f"✅ {solver_prefix} cuOpt data model built in {model_time:.3f}s")
 
                 # Step 3: Configure solver with ultra-aggressive settings
-                print(f"⚙️ {solver_prefix} Configuring high-performance solver...")
+                logger.info(f"⚙️ {solver_prefix} Configuring high-performance solver...")
                 solver_settings = self._configure_solver(problem_size)
 
                 # Step 4: Verify GPU and run solver
                 if not self.concurrent_mode:  # Only verify once for concurrent mode
                     self._verify_gpu_status()
 
-                print(f"🚀 {solver_prefix} Running cuOpt optimization...")
+                logger.info(f"🚀 {solver_prefix} Running cuOpt optimization...")
                 solve_start = time.time()
 
                 # Run solver with memory context
@@ -914,18 +920,18 @@ class TechnicianWorkOrderSolver:
                     solution = Solve(data_model, solver_settings)
 
                 solve_time = time.time() - solve_start
-                print(f"✅ {solver_prefix} cuOpt solved in {solve_time:.3f}s")
+                logger.info(f"✅ {solver_prefix} cuOpt solved in {solve_time:.3f}s")
 
                 # Step 5: Check solver status
                 solver_status = solution.get_status()
                 if solver_status == 0:
-                    print(f"📊 {solver_prefix} SUCCESS: Objective value = {solution.get_total_objective():.2f}")
+                    logger.info(f"📊 {solver_prefix} SUCCESS: Objective value = {solution.get_total_objective():.2f}")
                 else:
                     try:
                         err_msg = solution.get_error_message()
                     except Exception:
                         err_msg = "unknown"
-                    print(f"📊 {solver_prefix} Status {solver_status}: {err_msg}")
+                    logger.info(f"📊 {solver_prefix} Status {solver_status}: {err_msg}")
 
                 # Step 6: Convert results to our format
                 conversion_start = time.time()
@@ -939,20 +945,20 @@ class TechnicianWorkOrderSolver:
                 # Performance summary
                 total_time = optimization_solution.solve_time
                 if not self.concurrent_mode or logger.isEnabledFor(logging.INFO):
-                    print(f"🏁 {solver_prefix} PERFORMANCE SUMMARY:")
-                    print(f"   OSRM Matrix: {matrix_time:.3f}s ({100*matrix_time/total_time:.1f}%)")
-                    print(f"   Model Build: {model_time:.3f}s ({100*model_time/total_time:.1f}%)")
-                    print(f"   cuOpt Solve: {solve_time:.3f}s ({100*solve_time/total_time:.1f}%)")
-                    print(f"   Conversion:  {conversion_time:.3f}s ({100*conversion_time/total_time:.1f}%)")
-                    print(f"   TOTAL TIME:  {total_time:.3f}s")
-                    print(f"   Status: {optimization_solution.status.value}, Orders: {optimization_solution.orders_completed}")
+                    logger.info(f"🏁 {solver_prefix} PERFORMANCE SUMMARY:")
+                    logger.info(f"   OSRM Matrix: {matrix_time:.3f}s ({100*matrix_time/total_time:.1f}%)")
+                    logger.info(f"   Model Build: {model_time:.3f}s ({100*model_time/total_time:.1f}%)")
+                    logger.info(f"   cuOpt Solve: {solve_time:.3f}s ({100*solve_time/total_time:.1f}%)")
+                    logger.info(f"   Conversion:  {conversion_time:.3f}s ({100*conversion_time/total_time:.1f}%)")
+                    logger.info(f"   TOTAL TIME:  {total_time:.3f}s")
+                    logger.info(f"   Status: {optimization_solution.status.value}, Orders: {optimization_solution.orders_completed}")
 
                 return optimization_solution
 
             except Exception as e:
                 logger.error(f"Solver error: {e}")
                 solver_prefix = f"[Solver {self.solver_id}]" if self.concurrent_mode else ""
-                print(f"❌ {solver_prefix} Solver error: {e}")
+                logger.error(f"❌ {solver_prefix} Solver error: {e}")
                 return OptimizationSolution(
                     status=SolutionStatus.ERROR,
                     unassigned_orders=[wo.id for wo in problem.work_orders],
@@ -976,7 +982,7 @@ class TechnicianWorkOrderSolver:
         solver_settings.set_error_logging_mode(False)
 
         mode_str = "CONCURRENT" if self.concurrent_mode else "ULTRA-fast"
-        print(f"   ⚡⚡ {mode_str} mode: {time_limit}s limit for {problem_size} locations")
+        logger.info(f"   ⚡⚡ {mode_str} mode: {time_limit}s limit for {problem_size} locations")
 
         return solver_settings
 
@@ -988,12 +994,12 @@ class TechnicianWorkOrderSolver:
             device_props = cp.cuda.runtime.getDeviceProperties(device_id)
             meminfo = cp.cuda.runtime.memGetInfo()
 
-            print(f"   🎯 GPU {device_id}: {device_props['name'].decode()}")
-            print(f"   🎯 Memory: {meminfo[0]//1024//1024}MB free / {meminfo[1]//1024//1024}MB total")
-            print(f"   🎯 CUDA Cores: {device_props['multiProcessorCount'] * 128}")  # Rough estimate
+            logger.info(f"   🎯 GPU {device_id}: {device_props['name'].decode()}")
+            logger.info(f"   🎯 Memory: {meminfo[0]//1024//1024}MB free / {meminfo[1]//1024//1024}MB total")
+            logger.info(f"   🎯 CUDA Cores: {device_props['multiProcessorCount'] * 128}")  # Rough estimate
 
         except Exception as e:
-            print(f"   ⚠️ GPU verification failed: {e}")
+            logger.warning(f"   ⚠️ GPU verification failed: {e}")
 
     def _build_cuopt_model(self, problem: OptimizationProblem) -> DataModel:
         """
@@ -1034,7 +1040,7 @@ class TechnicianWorkOrderSolver:
         if any(drop_return_flags):  # Only set if any technician has drop_return_trip=True
             with cudf_memory_context("drop return trips"):
                 data_model.set_drop_return_trips(cudf.Series(drop_return_flags, dtype=bool))
-            print(f"   🚗 Drop return trips configured: {sum(drop_return_flags)} technicians")
+            logger.info(f"   🚗 Drop return trips configured: {sum(drop_return_flags)} technicians")
 
         # 4. Set order locations (vectorized)
         with cudf_memory_context("order locations"):
@@ -1076,7 +1082,7 @@ class TechnicianWorkOrderSolver:
                     )
         else:
             if not self.concurrent_mode:
-                print("   ⚡⚡ Skipping breaks (ultra-performance mode)")
+                logger.info("   ⚡⚡ Skipping breaks (ultra-performance mode)")
 
         # 9. Set capacity dimensions (daily limit + optional skill matching)
         enforce_skills = bool(self.config.get('enforce_skill_constraints', False))
@@ -1090,7 +1096,7 @@ class TechnicianWorkOrderSolver:
                 for wo in problem.work_orders
             ], dtype=np.float32)
             data_model.set_order_prizes(cudf.Series(prizes))
-            print(f"   🏆 Order prizes set (emergency=1000 → low=50)")
+            logger.info(f"   🏆 Order prizes set (emergency=1000 → low=50)")
         except AttributeError:
             logger.debug("set_order_prizes not available in this cuOpt version — skipping")
 
@@ -1101,7 +1107,7 @@ class TechnicianWorkOrderSolver:
                 with cudf_memory_context("vehicle fixed costs"):
                     fixed_costs = np.full(n_technicians, vehicle_fixed_cost, dtype=np.float32)
                     data_model.set_vehicle_fixed_costs(cudf.Series(fixed_costs))
-                print(f"   💰 Vehicle fixed cost: {vehicle_fixed_cost} per technician deployed")
+                logger.info(f"   💰 Vehicle fixed cost: {vehicle_fixed_cost} per technician deployed")
             except AttributeError:
                 logger.warning("set_vehicle_fixed_costs not available in this cuOpt version — skipping")
 
@@ -1113,13 +1119,13 @@ class TechnicianWorkOrderSolver:
                 with cudf_memory_context("vehicle max times"):
                     max_times = np.full(n_technicians, cap, dtype=np.float32)
                     data_model.set_vehicle_max_times(cudf.Series(max_times))
-                print(f"   ⏱ Vehicle max time: {max_route_hours}h ({cap:.0f} min) per technician")
+                logger.info(f"   ⏱ Vehicle max time: {max_route_hours}h ({cap:.0f} min) per technician")
             except Exception as e:
                 logger.warning(f"set_vehicle_max_times failed ({type(e).__name__}: {e}) — using min_vehicles fallback")
                 # Fallback: request all vehicles so solver distributes work across all technicians
                 try:
                     data_model.set_min_vehicles(n_technicians)
-                    print(f"   ⏱ Balance workload fallback: set_min_vehicles({n_technicians})")
+                    logger.info(f"   ⏱ Balance workload fallback: set_min_vehicles({n_technicians})")
                 except Exception as e2:
                     logger.warning(f"set_min_vehicles also failed: {e2}")
 
@@ -1140,7 +1146,7 @@ class TechnicianWorkOrderSolver:
             )
 
         if not enforce_skills:
-            print("   ℹ️  Skill constraints disabled (enable in Settings)")
+            logger.info("   ℹ️  Skill constraints disabled (enable in Settings)")
             return
 
         # Use add_order_vehicle_match — the purpose-built API for skill routing.
@@ -1164,7 +1170,7 @@ class TechnicianWorkOrderSolver:
                     cudf.Series(eligible, dtype=np.int32)
                 )
                 constrained += 1
-            print(f"   🎯 Skill matching: {constrained} order(s) constrained via add_order_vehicle_match")
+            logger.info(f"   🎯 Skill matching: {constrained} order(s) constrained via add_order_vehicle_match")
         except AttributeError:
             logger.warning("add_order_vehicle_match not available in this cuOpt version — skill constraints skipped")
 
@@ -1412,7 +1418,7 @@ def test_solver():
     """Test solver with simple sample data and memory monitoring"""
     from core.models import Technician, WorkOrder, Location, TimeWindow, Priority, WorkOrderType
 
-    print("=== CREATING SIMPLE TEST CASE ===")
+    logger.info("=== CREATING SIMPLE TEST CASE ===")
 
     technicians = [
         Technician(
@@ -1440,46 +1446,46 @@ def test_solver():
     ]
 
     try:
-        print("=== STARTING SOLVER TEST WITH MEMORY MONITORING ===")
+        logger.info("=== STARTING SOLVER TEST WITH MEMORY MONITORING ===")
 
         # Get initial memory state
         initial_memory = get_gpu_memory_info()
-        print(f"Initial GPU memory: {initial_memory['gpu_used_mb']:.1f}MB used")
+        logger.info(f"Initial GPU memory: {initial_memory['gpu_used_mb']:.1f}MB used")
 
         solution = solve_optimization_problem(technicians, work_orders)
 
         # Get final memory state
         final_memory = get_gpu_memory_info()
-        print(f"Final GPU memory: {final_memory['gpu_used_mb']:.1f}MB used")
-        print(f"Memory change: {final_memory['gpu_used_mb'] - initial_memory['gpu_used_mb']:.1f}MB")
+        logger.info(f"Final GPU memory: {final_memory['gpu_used_mb']:.1f}MB used")
+        logger.info(f"Memory change: {final_memory['gpu_used_mb'] - initial_memory['gpu_used_mb']:.1f}MB")
 
-        print(f"\n=== OPTIMIZATION RESULTS ===")
-        print(f"Status: {solution.status.value}")
-        print(f"Technicians used: {solution.technicians_used}")
-        print(f"Orders completed: {solution.orders_completed}")
-        print(f"Solve time: {solution.solve_time:.3f}s")
+        logger.info(f"\n=== OPTIMIZATION RESULTS ===")
+        logger.info(f"Status: {solution.status.value}")
+        logger.info(f"Technicians used: {solution.technicians_used}")
+        logger.info(f"Orders completed: {solution.orders_completed}")
+        logger.info(f"Solve time: {solution.solve_time:.3f}s")
 
         # Print detailed results
         if solution.routes:
             for route in solution.routes:
-                print(f"\n{route.technician_id}:")
+                logger.info(f"\n{route.technician_id}:")
                 if route.assignments:
                     for assignment in route.assignments:
-                        print(f"  ✅ {assignment.work_order_id}")
-                        print(f"     Arrival: {assignment.arrival_time} min")
-                        print(f"     Travel time: {assignment.travel_time_to} min")
+                        logger.info(f"  ✅ {assignment.work_order_id}")
+                        logger.info(f"     Arrival: {assignment.arrival_time} min")
+                        logger.info(f"     Travel time: {assignment.travel_time_to} min")
                 else:
-                    print(f"  ❌ No assignments")
+                    logger.error(f"  ❌ No assignments")
 
         if solution.unassigned_orders:
-            print(f"\n❌ Unassigned orders: {solution.unassigned_orders}")
+            logger.error(f"\n❌ Unassigned orders: {solution.unassigned_orders}")
 
         success = (solution.status.value != "error") or (solution.orders_completed > 0)
-        print(f"\n🎯 Test result: {'✅ PASS' if success else '❌ FAIL'}")
+        logger.info(f"\n🎯 Test result: {'✅ PASS' if success else '❌ FAIL'}")
         return success
 
     except Exception as e:
-        print(f"❌ Solver test failed with exception: {e}")
+        logger.error(f"❌ Solver test failed with exception: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -1489,7 +1495,7 @@ def test_concurrent_solver():
     """Test concurrent solver with multiple problems and memory monitoring"""
     from core.models import Technician, WorkOrder, Location, TimeWindow, Priority, WorkOrderType
 
-    print("=== TESTING CONCURRENT SOLVER WITH MEMORY MONITORING ===")
+    logger.info("=== TESTING CONCURRENT SOLVER WITH MEMORY MONITORING ===")
 
     # Create multiple test problems
     problems = []
@@ -1523,11 +1529,11 @@ def test_concurrent_solver():
         problems.append(problem)
 
     try:
-        print(f"=== STARTING CONCURRENT SOLVER TEST WITH {len(problems)} PROBLEMS ===")
+        logger.info(f"=== STARTING CONCURRENT SOLVER TEST WITH {len(problems)} PROBLEMS ===")
 
         # Get initial memory state
         initial_memory = get_gpu_memory_info()
-        print(f"Initial GPU memory: {initial_memory['gpu_used_mb']:.1f}MB used")
+        logger.info(f"Initial GPU memory: {initial_memory['gpu_used_mb']:.1f}MB used")
 
         start_time = time.time()
 
@@ -1537,13 +1543,13 @@ def test_concurrent_solver():
 
         # Get final memory state
         final_memory = get_gpu_memory_info()
-        print(f"Final GPU memory: {final_memory['gpu_used_mb']:.1f}MB used")
-        print(f"Memory change: {final_memory['gpu_used_mb'] - initial_memory['gpu_used_mb']:.1f}MB")
+        logger.info(f"Final GPU memory: {final_memory['gpu_used_mb']:.1f}MB used")
+        logger.info(f"Memory change: {final_memory['gpu_used_mb'] - initial_memory['gpu_used_mb']:.1f}MB")
 
-        print(f"\n=== CONCURRENT OPTIMIZATION RESULTS ===")
-        print(f"Total problems: {len(problems)}")
-        print(f"Total time: {total_time:.3f}s")
-        print(f"Average time per problem: {total_time/len(problems):.3f}s")
+        logger.info(f"\n=== CONCURRENT OPTIMIZATION RESULTS ===")
+        logger.info(f"Total problems: {len(problems)}")
+        logger.info(f"Total time: {total_time:.3f}s")
+        logger.info(f"Average time per problem: {total_time/len(problems):.3f}s")
 
         success_count = 0
         for i, solution in enumerate(solutions):
@@ -1551,46 +1557,46 @@ def test_concurrent_solver():
             orders_completed = solution.orders_completed
             if status != "error" and orders_completed > 0:
                 success_count += 1
-            print(f"Problem {i}: Status={status}, Orders={orders_completed}, Time={solution.solve_time:.3f}s")
+            logger.info(f"Problem {i}: Status={status}, Orders={orders_completed}, Time={solution.solve_time:.3f}s")
 
         success_rate = success_count / len(problems) * 100
-        print(f"\nSuccess rate: {success_rate:.1f}% ({success_count}/{len(problems)})")
+        logger.info(f"\nSuccess rate: {success_rate:.1f}% ({success_count}/{len(problems)})")
 
         # Get manager statistics if available
         try:
             manager = get_concurrent_solver_manager()
             stats = manager.get_statistics()
-            print(f"\nManager Statistics:")
-            print(f"  Max concurrent instances: {stats['max_concurrent_instances']}")
-            print(f"  CUDA streams: {stats['cuda_streams']}")
-            print(f"  Total requests: {stats['total_requests']}")
-            print(f"  Completed: {stats['completed_requests']}")
-            print(f"  Failed: {stats['failed_requests']}")
-            print(f"  Success rate: {stats['success_rate']:.1f}%")
-            print(f"  Average processing time: {stats['average_processing_time']:.3f}s")
+            logger.info(f"\nManager Statistics:")
+            logger.info(f"  Max concurrent instances: {stats['max_concurrent_instances']}")
+            logger.info(f"  CUDA streams: {stats['cuda_streams']}")
+            logger.info(f"  Total requests: {stats['total_requests']}")
+            logger.info(f"  Completed: {stats['completed_requests']}")
+            logger.info(f"  Failed: {stats['failed_requests']}")
+            logger.info(f"  Success rate: {stats['success_rate']:.1f}%")
+            logger.info(f"  Average processing time: {stats['average_processing_time']:.3f}s")
 
             # Memory statistics
             memory_stats = stats.get('memory_stats', {})
-            print(f"  Peak GPU usage: {memory_stats.get('peak_gpu_usage_mb', 0):.1f}MB")
-            print(f"  Average GPU usage: {memory_stats.get('average_gpu_usage_mb', 0):.1f}MB")
-            print(f"  Memory cleanups: {memory_stats.get('memory_cleanups', 0)}")
-            print(f"  Memory warnings: {memory_stats.get('memory_warnings', 0)}")
+            logger.info(f"  Peak GPU usage: {memory_stats.get('peak_gpu_usage_mb', 0):.1f}MB")
+            logger.info(f"  Average GPU usage: {memory_stats.get('average_gpu_usage_mb', 0):.1f}MB")
+            logger.info(f"  Memory cleanups: {memory_stats.get('memory_cleanups', 0)}")
+            logger.info(f"  Memory warnings: {memory_stats.get('memory_warnings', 0)}")
         except Exception:
             pass
 
         overall_success = success_rate >= 80  # 80% success rate threshold
-        print(f"\n🎯 Concurrent test result: {'✅ PASS' if overall_success else '❌ FAIL'}")
+        logger.info(f"\n🎯 Concurrent test result: {'✅ PASS' if overall_success else '❌ FAIL'}")
         return overall_success
 
     except Exception as e:
-        print(f"❌ Concurrent solver test failed with exception: {e}")
+        logger.error(f"❌ Concurrent solver test failed with exception: {e}")
         import traceback
         traceback.print_exc()
         return False
 
 
 if __name__ == "__main__":
-    print("Testing solver with GPU memory management...")
+    logger.info("Testing solver with GPU memory management...")
 
     # Test basic solver
     basic_success = test_solver()
@@ -1598,16 +1604,16 @@ if __name__ == "__main__":
     # Test concurrent solver if available
     concurrent_config = get_concurrent_solver_config()
     if concurrent_config['enabled']:
-        print("\n" + "="*50)
+        logger.info("\n" + "="*50)
         concurrent_success = test_concurrent_solver()
 
         if basic_success and concurrent_success:
-            print("\n🎉 All tests passed!")
+            logger.info("\n🎉 All tests passed!")
         else:
-            print("\n❌ Some tests failed")
+            logger.error("\n❌ Some tests failed")
     else:
-        print("\n⚠️ Concurrent execution disabled, skipping concurrent tests")
+        logger.warning("\n⚠️ Concurrent execution disabled, skipping concurrent tests")
         if basic_success:
-            print("\n🎉 Basic tests passed!")
+            logger.info("\n🎉 Basic tests passed!")
         else:
-            print("\n❌ Basic tests failed")
+            logger.error("\n❌ Basic tests failed")
