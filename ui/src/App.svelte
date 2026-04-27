@@ -87,6 +87,7 @@
     vehicle_fixed_cost: 300,
     balance_workload: false,
     max_route_hours: 7,
+    drop_return_trip: false,
     time_limit_override: false,
     time_limit_seconds: 30
   }
@@ -98,6 +99,22 @@
     if (settings.balance_workload) cfg.max_route_hours = settings.max_route_hours
     if (settings.time_limit_override) cfg.time_limit_override = settings.time_limit_seconds
     return Object.keys(cfg).length ? cfg : null
+  }
+
+  // Progress bar state
+  let progress = 0
+  let progressPhase = ''
+  let progressElapsed = 0
+  let _progressTimer = null
+
+  function estimatedSolveMs() {
+    // Mirror config.py time limits; add ~4 s for OSRM matrix computation
+    if (settings.time_limit_override) return (settings.time_limit_seconds + 4) * 1000
+    const n = workOrders.length + 1
+    if (n <= 15) return 9000
+    if (n <= 50) return 14000
+    if (n <= 100) return 34000
+    return 64000
   }
 
   let nextTechId = 6
@@ -148,10 +165,29 @@
 
   async function handleOptimize() {
     loading = true; error = null; result = null
+    progress = 0; progressElapsed = 0
+    progressPhase = 'Computing travel times…'
+
+    const estimated = estimatedSolveMs()
+    const start = Date.now()
+    _progressTimer = setInterval(() => {
+      const elapsed = Date.now() - start
+      progressElapsed = Math.floor(elapsed / 1000)
+      progress = 90 * (1 - Math.exp(-3 * elapsed / estimated))
+      if (elapsed > 4000) progressPhase = 'Optimizing routes…'
+    }, 100)
+
     try {
-      result = await optimize(technicians, workOrders, buildConfig())
+      const techs = technicians.map(t => ({ ...t, drop_return_trip: settings.drop_return_trip }))
+      result = await optimize(techs, workOrders, buildConfig())
+      clearInterval(_progressTimer)
+      progress = 100
+      progressPhase = 'Done!'
+      setTimeout(() => { progress = 0; progressPhase = ''; progressElapsed = 0 }, 700)
     } catch(e) {
       error = e.message
+      clearInterval(_progressTimer)
+      progress = 0; progressPhase = ''; progressElapsed = 0
     }
     loading = false
   }
@@ -179,14 +215,22 @@
         on:click={handleOptimize}
         disabled={loading || technicians.length === 0 || workOrders.length === 0}
       >
-        {#if loading}
-          <span class="spinner"></span> Optimizing…
-        {:else}
-          ⚡ Optimize
-        {/if}
+        {#if loading}Optimizing…{:else}⚡ Optimize{/if}
       </button>
     </div>
   </header>
+
+  {#if loading || progress > 0}
+    <div class="progress-wrap">
+      <div class="progress-track">
+        <div class="progress-fill" style="width: {progress}%"></div>
+      </div>
+      <div class="progress-meta">
+        <span class="progress-phase">{progressPhase}</span>
+        <span class="progress-elapsed">{progressElapsed}s</span>
+      </div>
+    </div>
+  {/if}
 
   {#if error}
     <div class="error-bar">⚠ {error}</div>
@@ -265,6 +309,17 @@
                 <input id="inp-max-hours" type="number" bind:value={settings.max_route_hours} min="1" max="12" step="0.5" class="num-input" />
               </div>
             {/if}
+          </div>
+
+          <div class="setting-group">
+            <label class="toggle-row" for="chk-return">
+              <div class="toggle-info">
+                <span class="setting-name">Drop return to base</span>
+                <span class="setting-api">set_drop_return_trips</span>
+                <span class="setting-desc">Technicians end their day at their last job site instead of returning to their start location. Reduces total travel time.</span>
+              </div>
+              <input id="chk-return" type="checkbox" bind:checked={settings.drop_return_trip} />
+            </label>
           </div>
 
           <div class="setting-group">
@@ -390,11 +445,26 @@
   }
   .optimize-btn:hover:not(:disabled) { background: #5a52d5; }
 
-  .spinner {
-    width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.3);
-    border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite;
-  }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  .progress-wrap {
+    flex-shrink: 0; background: #13151f;
+    border-bottom: 1px solid #2d3250;
+  }
+  .progress-track {
+    height: 3px; background: #2d3250; width: 100%;
+  }
+  .progress-fill {
+    height: 100%; background: #6c63ff;
+    transition: width 0.1s linear;
+    box-shadow: 0 0 8px rgba(108,99,255,0.6);
+  }
+  .progress-meta {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 4px 16px; font-size: 11px;
+  }
+  .progress-phase { color: #6c63ff; }
+  .progress-elapsed { color: #8892b0; font-variant-numeric: tabular-nums; }
 
   .error-bar {
     background: #c0392b; color: #fff; padding: 7px 16px; font-size: 13px; flex-shrink: 0;
