@@ -1219,7 +1219,7 @@ class TechnicianWorkOrderSolver:
         # Get objective value
         try:
             objective_value = solution.get_total_objective()
-        except:
+        except Exception:
             objective_value = 0.0
 
         # Create solution
@@ -1285,12 +1285,14 @@ class TechnicianWorkOrderSolver:
                         travel_time = int(durations[prev_location_idx][location_idx])
                     prev_location_idx = location_idx
 
+                    stamp = row['arrival_stamp']
+                    arrival_mins = int(stamp) if stamp is not None and stamp == stamp else 0
                     assignment = Assignment(
                         technician_id=problem.technicians[tech_idx].id,
                         work_order_id=wo.id,
-                        arrival_time=int(row['arrival_stamp']),
-                        start_time=int(row['arrival_stamp']),
-                        finish_time=int(row['arrival_stamp']) + wo.service_time,
+                        arrival_time=arrival_mins,
+                        start_time=arrival_mins,
+                        finish_time=arrival_mins + wo.service_time,
                         travel_time_to=travel_time,
                         sequence_order=len(route.assignments) + 1
                     )
@@ -1573,7 +1575,7 @@ def test_concurrent_solver():
             print(f"  Average GPU usage: {memory_stats.get('average_gpu_usage_mb', 0):.1f}MB")
             print(f"  Memory cleanups: {memory_stats.get('memory_cleanups', 0)}")
             print(f"  Memory warnings: {memory_stats.get('memory_warnings', 0)}")
-        except:
+        except Exception:
             pass
 
         overall_success = success_rate >= 80  # 80% success rate threshold

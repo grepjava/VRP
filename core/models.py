@@ -107,12 +107,6 @@ class Technician:
         """Calculate available work time excluding break"""
         return self.work_shift.duration() - self.break_duration
 
-    def can_handle_order(self, work_order: 'WorkOrder') -> bool:
-        """Check if technician can handle the work order based on skills"""
-        if work_order.required_skills:
-            return work_order.required_skills.issubset(self.skills)
-        return True
-
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary"""
         return {

@@ -160,8 +160,7 @@ DATA_CONFIG = {
 
     # Concurrent processing limits with memory considerations
     'concurrent_limits': {
-        'max_requests_per_minute': 360,  # 6 instances * 60 requests/min
-        'max_concurrent_problems': 6,
+        'max_requests_per_minute': 360,
         'queue_size': 50,
         'priority_queue_enabled': True,
         'memory_limit_per_request_mb': 1024,  # Memory limit per concurrent request
