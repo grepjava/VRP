@@ -1,5 +1,19 @@
 # Setup & Configuration Guide
 
+## Choose a workflow
+
+There are two ways to run this project. **Pick one — they are not combined.**
+
+| | Docker (`setup.sh`) | Dev (`start.sh`) |
+|---|---|---|
+| **Use when** | Running in production, sharing with others | Actively changing backend or UI code |
+| **First run** | `./setup.sh` | `./start.sh` |
+| **Start (day 2+)** | `docker compose up -d` | `./start.sh` |
+| **Stop** | `docker compose down` | `Ctrl+C` |
+| **Hot reload** | No (rebuild image to update) | Yes (API + UI auto-reload on save) |
+
+---
+
 ## Contents
 
 1. [Prerequisites](#prerequisites)
