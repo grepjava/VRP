@@ -435,7 +435,7 @@ https://hub.docker.com/r/rapidsai/base/tags
 
 ```yaml
 args:
-  RAPIDS_IMAGE: rapidsai/base:25.02-cuda12.4-py3.12   # match your CUDA version
+  RAPIDS_IMAGE: rapidsai/base:26.06a-cuda13-py3.12-amd64   # match your CUDA version
 ```
 
 ### "Time matrix should be set" error from cuOpt
