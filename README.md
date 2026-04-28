@@ -65,6 +65,7 @@ The UI exposes four cuOpt settings via the ⚙ Settings panel:
 | Minimize fleet size | `set_vehicle_fixed_costs` | Penalises deploying extra vehicles |
 | Balance workload | `add_capacity_dimension` | Caps total service time per technician — prevents overloading without pushing routes to late in the day |
 | Custom time limit | `SolverSettings.set_time_limit` | More time = better solution quality |
+| Drop return to base | `set_drop_return_trips` | Omit the final leg back to the depot (global toggle) |
 
 ## API
 
