@@ -21,7 +21,8 @@ There are two ways to run this project. **Pick one — they are not combined.**
 3. [Development workflow](#development-workflow) — without Docker
 4. [Configuration reference](#configuration-reference)
 5. [API usage](#api-usage)
-6. [Troubleshooting](#troubleshooting)
+6. [Scenario persistence](#scenario-persistence)
+7. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -396,6 +397,75 @@ GET /redoc       # ReDoc
 
 ---
 
+## Scenario persistence
+
+Scenarios are saved as JSON files inside `data/scenarios/` on the **API container**. The `docker-compose.yml` volume-mounts this directory from the host so files survive container restarts and rebuilds:
+
+```yaml
+volumes:
+  - ./data/scenarios:/app/data/scenarios
+```
+
+The `data/scenarios/` directory is created automatically by the API on startup. On a fresh clone you can also create it manually:
+
+```bash
+mkdir -p data/scenarios
+```
+
+Each scenario is stored as `<slug>.json` where the slug is derived from the scenario name (e.g. "Kuala Lumpur 20 orders" → `kuala-lumpur-20-orders.json`).
+
+### Demo data generator
+
+The **✦ Demo** panel in the UI lets you generate a realistic scenario for any city:
+
+1. Type a city name — autocomplete suggestions appear via Nominatim
+2. Choose number of work orders (5–50) and technicians (1–15)
+3. Click **Generate**
+
+The backend geocodes the city, then fetches real named locations from OpenStreetMap (Overpass API → Nominatim POI search → random coordinates fallback). Work order addresses, technician start points, skill sets, and time windows are all auto-populated.
+
+Generated scenarios can be saved with the **💾 Save** button and reloaded from the Saved Scenarios list at any time.
+
+### Scenario API
+
+```bash
+# List all saved scenarios
+GET /vrp/scenarios
+
+# Save a scenario
+POST /vrp/scenarios
+Content-Type: application/json
+{
+  "name": "My Scenario",
+  "technicians": [...],
+  "work_orders": [...],
+  "city": "Kuala Lumpur",
+  "source": "overpass"
+}
+
+# Load a scenario
+GET /vrp/scenarios/my-scenario
+
+# Delete a scenario
+DELETE /vrp/scenarios/my-scenario
+```
+
+### Demo generator API
+
+```bash
+POST /vrp/generate-demo
+Content-Type: application/json
+{
+  "city": "Berlin",
+  "num_orders": 20,
+  "num_technicians": 5
+}
+```
+
+Returns a full `technicians` + `work_orders` payload ready to pass to `/vrp/optimize`, plus `city` (resolved display name) and `source` (`"overpass"`, `"nominatim"`, or `"random"`).
+
+---
+
 ## Troubleshooting
 
 ### OSRM container exits immediately
@@ -459,6 +529,16 @@ docker compose logs -f api
 ```
 
 Common causes: OSRM not ready yet (wait a few seconds), GPU out of memory (reduce `CUOPT_CONCURRENT_INSTANCES`), invalid request body.
+
+### Docker build fails with "error getting credentials" in WSL2
+
+The Docker credential helper (`docker-credential-desktop`) is not accessible from inside WSL2. Fix by clearing the credential store reference:
+
+```bash
+echo '{}' > ~/.docker/config.json
+```
+
+This does not affect pulling public images — `node`, `nginx`, and `rapidsai/base` are all public and require no login.
 
 ### Map data on Windows host (WSL2)
 

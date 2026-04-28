@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-
 # ── Base image ────────────────────────────────────────────────────────────────
 # rapidsai/base ships with cuDF, RMM, and conda pre-configured.
 # Adjust the tag to match your CUDA version and desired RAPIDS release.

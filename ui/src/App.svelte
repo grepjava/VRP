@@ -252,7 +252,7 @@
   <header>
     <div class="header-left">
       <span class="logo">⚡</span>
-      <h1>cuOpt Field Service</h1>
+      <h1>Solenne VRP Scenario Tester</h1>
     </div>
 
     <div class="header-right">

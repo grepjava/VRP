@@ -14,6 +14,8 @@ Real-time Vehicle Routing Problem solver for field service operations. Dispatche
 - Optional workload balancing — caps total service time per technician so work is spread evenly
 - Real road travel times via OSRM (not straight-line estimates)
 - Interactive map with colour-coded routes and priority legends
+- **Demo data generator** — enter a city name, choose order/technician counts, and the backend auto-generates realistic scenarios using real OSM locations (via Overpass → Nominatim → random fallback chain)
+- **Named scenario persistence** — save, load, and delete named scenarios; stored as JSON files on the backend and survive container restarts
 
 ## Architecture
 
@@ -70,10 +72,16 @@ The UI exposes four cuOpt settings via the ⚙ Settings panel:
 ## API
 
 ```
-POST /vrp/optimize      Run the solver
-GET  /health            Service health check
-GET  /status            Solver and GPU status
-GET  /docs              Interactive API docs (Swagger)
+POST /vrp/optimize                  Run the solver
+GET  /health                        Service health check
+GET  /status                        Solver and GPU status
+GET  /docs                          Interactive API docs (Swagger)
+
+POST /vrp/generate-demo             Generate a realistic scenario for a given city
+GET  /vrp/scenarios                 List saved scenarios (name, slug, counts, created_at)
+POST /vrp/scenarios                 Save a named scenario (technicians + work orders as JSON)
+GET  /vrp/scenarios/{slug}          Load a saved scenario
+DELETE /vrp/scenarios/{slug}        Delete a saved scenario
 ```
 
 Example request body: see [SETUP.md — API usage](SETUP.md#api-usage).
