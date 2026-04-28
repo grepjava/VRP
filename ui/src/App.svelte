@@ -82,6 +82,14 @@
   let pendingLocation = null
   let showSettings = false
   let showDemoPanel = false
+  let demoNotice = null
+  let _demoNoticeTimer = null
+
+  const SOURCE_LABELS = {
+    overpass:  '📍 Real locations from OpenStreetMap',
+    nominatim: '📍 Approximate locations from Nominatim',
+    random:    '📍 Random locations — no POI data found for this area',
+  }
 
   let settings = {
     enforce_skill_constraints: false,
@@ -161,6 +169,9 @@
     result = null
     error = null
     showDemoPanel = false
+    clearTimeout(_demoNoticeTimer)
+    demoNotice = SOURCE_LABELS[detail.source] ?? null
+    _demoNoticeTimer = setTimeout(() => { demoNotice = null }, 5000)
   }
 
   function handleMapClick({ detail }) {
@@ -246,6 +257,10 @@
         <span class="progress-elapsed">{progressElapsed}s</span>
       </div>
     </div>
+  {/if}
+
+  {#if demoNotice}
+    <div class="demo-notice">{demoNotice}</div>
   {/if}
 
   {#if error}
@@ -497,6 +512,11 @@
   }
   .progress-phase { color: #6c63ff; }
   .progress-elapsed { color: #8892b0; font-variant-numeric: tabular-nums; }
+
+  .demo-notice {
+    background: #1a2e2a; color: #00c896; border-bottom: 1px solid #1e4a3a;
+    padding: 6px 16px; font-size: 12px; flex-shrink: 0;
+  }
 
   .error-bar {
     background: #c0392b; color: #fff; padding: 7px 16px; font-size: 13px; flex-shrink: 0;
