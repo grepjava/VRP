@@ -298,12 +298,15 @@ class OSRMClient:
         time_unit = CONFIG['business']['time_unit']
         print(f"🕒 Converting time units from seconds to {time_unit}")
 
+        # Unreachable pairs from OSRM arrive as None (JSON null).
+        # Use float('nan') so solver.py's nan_to_num replaces them with a
+        # large sentinel (1e7) rather than 0.0 which would imply free travel.
         if time_unit == 'minutes':
-            durations = [[cell / 60.0 if cell is not None else 0.0 for cell in row] for row in durations]
+            durations = [[cell / 60.0 if cell is not None else float('nan') for cell in row] for row in durations]
         elif time_unit == 'hours':
-            durations = [[cell / 3600.0 if cell is not None else 0.0 for cell in row] for row in durations]
+            durations = [[cell / 3600.0 if cell is not None else float('nan') for cell in row] for row in durations]
         else:
-            durations = [[float(cell) if cell is not None else 0.0 for cell in row] for row in durations]
+            durations = [[float(cell) if cell is not None else float('nan') for cell in row] for row in durations]
 
         # Extract distances if available
         distances = None

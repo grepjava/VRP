@@ -1022,6 +1022,9 @@ class TechnicianWorkOrderSolver:
             raw = np.array(problem.distance_matrix.durations, dtype=np.float32)
             np.nan_to_num(raw, nan=1e7, posinf=1e7, neginf=0.0, copy=False)
             cost_matrix = cudf.DataFrame(raw)
+            # cuDF can promote float NaN to cuDF NULL during DataFrame construction;
+            # fillna is the safety net after the numpy-level nan_to_num above.
+            cost_matrix = cost_matrix.fillna(1e7)
             data_model.add_cost_matrix(cost_matrix)
             try:
                 data_model.add_transit_time_matrix(cost_matrix)
