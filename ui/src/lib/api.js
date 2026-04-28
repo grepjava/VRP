@@ -17,6 +17,19 @@ export async function optimize(technicians, workOrders, config = null) {
   return res.json()
 }
 
+export async function generateDemo(city, numOrders, numTechnicians) {
+  const res = await fetch(`${BASE}/vrp/generate-demo`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ city, num_orders: numOrders, num_technicians: numTechnicians })
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `Server error ${res.status}`)
+  }
+  return res.json()
+}
+
 export function minsToTime(m) {
   return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
 }

@@ -1037,6 +1037,29 @@ async def get_memory_status():
         )
 
 
+class DemoGenerateRequestModel(BaseModel):
+    city: str = Field("Kuala Lumpur", description="City name for geocoding")
+    num_orders: int = Field(15, ge=1, le=50, description="Number of work orders")
+    num_technicians: int = Field(4, ge=1, le=15, description="Number of technicians")
+
+
+@app.post("/vrp/generate-demo")
+async def generate_demo(request: DemoGenerateRequestModel):
+    """Generate realistic random demo data for a given city using OpenStreetMap geocoding"""
+    try:
+        from core.demo_generator import generate_demo_data
+        data = generate_demo_data(request.city, request.num_orders, request.num_technicians)
+        return data
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        logger.error(f"Demo generation failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Demo generation failed: {str(e)}"
+        )
+
+
 @app.get("/config")
 async def get_configuration():
     """Get current configuration (excluding sensitive data)"""

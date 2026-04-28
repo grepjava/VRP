@@ -2,6 +2,7 @@
   import MapView from './lib/MapView.svelte'
   import Sidebar from './lib/Sidebar.svelte'
   import ResultsPanel from './lib/ResultsPanel.svelte'
+  import DemoPanel from './lib/DemoPanel.svelte'
   import { optimize } from './lib/api.js'
 
   const ROUTE_COLORS = ['#6c63ff','#00c896','#ff6b35','#0a84ff','#ffd60a','#ff2d55','#bf5af2','#30d158']
@@ -80,6 +81,7 @@
   let pickingLocation = false
   let pendingLocation = null
   let showSettings = false
+  let showDemoPanel = false
 
   let settings = {
     enforce_skill_constraints: false,
@@ -151,6 +153,16 @@
     error = null
   }
 
+  function handleDemoGenerate({ detail }) {
+    technicians = detail.technicians
+    workOrders = detail.work_orders
+    nextTechId = detail.technicians.length + 1
+    nextOrderId = detail.work_orders.length + 1
+    result = null
+    error = null
+    showDemoPanel = false
+  }
+
   function handleMapClick({ detail }) {
     pendingLocation = detail
     if (!pickingLocation) {
@@ -212,6 +224,7 @@
         <span>📋 {workOrders.length}</span>
       </div>
       <button class="settings-btn" class:active={showSettings} on:click={() => showSettings = !showSettings}>⚙ Settings</button>
+      <button class="demo-btn" on:click={() => showDemoPanel = true} title="Generate demo data for any city">✦ Demo</button>
       <button class="reset-btn" on:click={handleReset} title="Reset to default data">↺ Reset</button>
       <button
         class="optimize-btn"
@@ -348,6 +361,15 @@
   </div>
 
   <ResultsPanel {result} {technicians} {workOrders} {ROUTE_COLORS} />
+
+  {#if showDemoPanel}
+    <DemoPanel
+      techCount={technicians.length}
+      orderCount={workOrders.length}
+      on:generate={handleDemoGenerate}
+      on:close={() => showDemoPanel = false}
+    />
+  {/if}
 </div>
 
 <style>
@@ -378,6 +400,13 @@
     border: 1px solid #2d3250;
   }
   .settings-btn:hover, .settings-btn.active { color: #e0e6f0; border-color: #6c63ff; background: #2a2e55; }
+
+  .demo-btn {
+    background: #232640; color: #8892b0; padding: 9px 14px;
+    border-radius: 8px; font-size: 13px; font-weight: 600;
+    border: 1px solid #2d3250;
+  }
+  .demo-btn:hover { color: #e0e6f0; border-color: #00c896; background: #1a2e2a; }
 
   .settings-backdrop {
     position: absolute; inset: 0; background: rgba(0,0,0,0.4);
