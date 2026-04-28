@@ -17,6 +17,43 @@ export async function optimize(technicians, workOrders, config = null) {
   return res.json()
 }
 
+export async function listScenarios() {
+  const res = await fetch(`${BASE}/vrp/scenarios`)
+  if (!res.ok) throw new Error(`Server error ${res.status}`)
+  return res.json()
+}
+
+export async function saveScenario(name, technicians, workOrders, city = '', source = 'manual') {
+  const res = await fetch(`${BASE}/vrp/scenarios`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, technicians, work_orders: workOrders, city, source })
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `Server error ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function loadScenario(slug) {
+  const res = await fetch(`${BASE}/vrp/scenarios/${encodeURIComponent(slug)}`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `Server error ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function deleteScenario(slug) {
+  const res = await fetch(`${BASE}/vrp/scenarios/${encodeURIComponent(slug)}`, { method: 'DELETE' })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `Server error ${res.status}`)
+  }
+  return res.json()
+}
+
 export async function generateDemo(city, numOrders, numTechnicians) {
   const res = await fetch(`${BASE}/vrp/generate-demo`, {
     method: 'POST',

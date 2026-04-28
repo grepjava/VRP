@@ -1,6 +1,6 @@
 <script>
-  import { createEventDispatcher } from 'svelte'
-  import { generateDemo } from './api.js'
+  import { createEventDispatcher, onMount } from 'svelte'
+  import { generateDemo, listScenarios, loadScenario, deleteScenario } from './api.js'
 
   const dispatch = createEventDispatcher()
 
@@ -13,6 +13,39 @@
   let loading = false
   let error = null
   let confirming = false
+
+  // Saved scenarios
+  let scenarios = []
+  let scenariosLoading = false
+  let scenarioError = null
+  let deletingSlug = null
+
+  onMount(async () => {
+    scenariosLoading = true
+    try { scenarios = await listScenarios() } catch { scenarios = [] }
+    scenariosLoading = false
+  })
+
+  async function handleLoad(slug) {
+    loading = true; error = null
+    try {
+      const data = await loadScenario(slug)
+      dispatch('generate', data)
+    } catch (e) { error = e.message }
+    loading = false
+  }
+
+  async function handleDelete(slug) {
+    if (deletingSlug === slug) {
+      try {
+        await deleteScenario(slug)
+        scenarios = scenarios.filter(s => s.slug !== slug)
+      } catch (e) { scenarioError = e.message }
+      deletingSlug = null
+    } else {
+      deletingSlug = slug
+    }
+  }
 
   $: hasExistingData = techCount > 0 || orderCount > 0
   $: city, numOrders, numTechnicians, (confirming = false)
@@ -121,6 +154,38 @@
   </div>
 
   <div class="panel-body">
+
+    {#if scenariosLoading}
+      <div class="scenarios-empty">Loading saved scenarios…</div>
+    {:else if scenarios.length > 0}
+      <div class="section-label">Saved Scenarios</div>
+      {#if scenarioError}
+        <div class="scenario-err">⚠ {scenarioError}</div>
+      {/if}
+      <div class="scenario-list">
+        {#each scenarios as s}
+          <div class="scenario-row">
+            <div class="scenario-info">
+              <span class="scenario-name">{s.name}</span>
+              <span class="scenario-meta">{s.tech_count} techs · {s.order_count} orders{s.city ? ` · ${s.city.split(',')[0]}` : ''}</span>
+            </div>
+            <div class="scenario-btns">
+              <button class="sc-load" on:click={() => handleLoad(s.slug)} disabled={loading}>Load</button>
+              <button
+                class="sc-del"
+                class:confirm={deletingSlug === s.slug}
+                on:click={() => handleDelete(s.slug)}
+                title={deletingSlug === s.slug ? 'Click again to confirm delete' : 'Delete'}
+              >{deletingSlug === s.slug ? '?' : '🗑'}</button>
+            </div>
+          </div>
+        {/each}
+      </div>
+      <div class="section-divider"></div>
+    {/if}
+
+    <div class="section-label">Generate New</div>
+
     <div class="field">
       <label class="field-label" for="demo-city">City or Area</label>
       <div class="city-wrap">
@@ -230,6 +295,37 @@
   .close-btn:hover { color: #e0e6f0; background: #2d3250; }
 
   .panel-body { padding: 16px; display: flex; flex-direction: column; gap: 18px; }
+
+  .section-label {
+    font-size: 10px; font-weight: 700; color: #556; text-transform: uppercase;
+    letter-spacing: 0.08em; margin-bottom: 6px;
+  }
+  .section-divider { border-top: 1px solid #2d3250; margin: 4px 0 8px; }
+
+  .scenarios-empty { font-size: 12px; color: #556; text-align: center; padding: 4px 0; }
+  .scenario-err { font-size: 11px; color: #e74c3c; margin-bottom: 6px; }
+
+  .scenario-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
+  .scenario-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    background: #232640; border: 1px solid #2d3250; border-radius: 7px; padding: 7px 10px;
+  }
+  .scenario-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .scenario-name { font-size: 13px; font-weight: 600; color: #e0e6f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .scenario-meta { font-size: 11px; color: #8892b0; }
+  .scenario-btns { display: flex; gap: 6px; flex-shrink: 0; }
+  .sc-load {
+    padding: 4px 10px; background: #6c63ff; color: #fff;
+    border-radius: 5px; font-size: 12px; font-weight: 600;
+  }
+  .sc-load:hover:not(:disabled) { background: #5a52d5; }
+  .sc-load:disabled { opacity: 0.5; cursor: not-allowed; }
+  .sc-del {
+    padding: 4px 8px; background: #232640; color: #8892b0;
+    border: 1px solid #2d3250; border-radius: 5px; font-size: 12px;
+  }
+  .sc-del:hover { color: #e74c3c; border-color: #e74c3c; }
+  .sc-del.confirm { background: #3a1a1a; color: #e74c3c; border-color: #e74c3c; font-weight: 700; }
 
   .field { display: flex; flex-direction: column; gap: 6px; }
   .field-label { font-size: 12px; font-weight: 600; color: #8892b0; text-transform: uppercase; letter-spacing: 0.05em; }

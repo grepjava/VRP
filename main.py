@@ -7,9 +7,22 @@ import logging
 import time
 import traceback
 import asyncio
+import re
+import json
+from pathlib import Path
 from typing import List, Dict, Any, Optional, Annotated
 from datetime import datetime
 from contextlib import asynccontextmanager
+
+SCENARIOS_DIR = Path("data/scenarios")
+SCENARIOS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _slugify(name: str) -> str:
+    s = name.lower().strip()
+    s = re.sub(r'[^\w\s-]', '', s)
+    s = re.sub(r'[\s_]+', '-', s)
+    return re.sub(r'-+', '-', s).strip('-')[:60]
 
 from fastapi import FastAPI, HTTPException, Request, status, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -1035,6 +1048,81 @@ async def get_memory_status():
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get memory status: {str(e)}"
         )
+
+
+class SaveScenarioRequestModel(BaseModel):
+    name: str = Field(..., min_length=1, max_length=80, description="Human-readable scenario name")
+    technicians: List[Dict[str, Any]] = Field(..., description="Technician list")
+    work_orders: List[Dict[str, Any]] = Field(..., description="Work order list")
+    city: str = Field("", description="City name used during generation")
+    source: str = Field("manual", description="Data source: overpass, nominatim, random, or manual")
+
+
+@app.post("/vrp/scenarios", status_code=status.HTTP_201_CREATED)
+async def save_scenario(req: SaveScenarioRequestModel):
+    """Save the current technicians and work orders as a named scenario"""
+    slug = _slugify(req.name)
+    if not slug:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid scenario name")
+    path = SCENARIOS_DIR / f"{slug}.json"
+    payload = {
+        "slug": slug,
+        "name": req.name,
+        "city": req.city,
+        "source": req.source,
+        "created_at": datetime.now().isoformat(),
+        "tech_count": len(req.technicians),
+        "order_count": len(req.work_orders),
+        "technicians": req.technicians,
+        "work_orders": req.work_orders,
+    }
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    logger.info(f"Scenario saved: {slug} ({len(req.technicians)} techs, {len(req.work_orders)} orders)")
+    return {"slug": slug, "name": req.name, "created_at": payload["created_at"]}
+
+
+@app.get("/vrp/scenarios")
+async def list_scenarios():
+    """List all saved scenarios (metadata only)"""
+    scenarios = []
+    for f in sorted(SCENARIOS_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
+        try:
+            data = json.loads(f.read_text(encoding="utf-8"))
+            scenarios.append({
+                "slug": data.get("slug", f.stem),
+                "name": data.get("name", f.stem),
+                "city": data.get("city", ""),
+                "source": data.get("source", "manual"),
+                "created_at": data.get("created_at", ""),
+                "tech_count": data.get("tech_count", 0),
+                "order_count": data.get("order_count", 0),
+            })
+        except Exception as e:
+            logger.warning(f"Could not read scenario {f.name}: {e}")
+    return scenarios
+
+
+@app.get("/vrp/scenarios/{slug}")
+async def load_scenario(slug: str):
+    """Load a saved scenario including full technician and work order data"""
+    path = SCENARIOS_DIR / f"{slug}.json"
+    if not path.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Scenario '{slug}' not found")
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Could not read scenario: {e}")
+
+
+@app.delete("/vrp/scenarios/{slug}", status_code=status.HTTP_200_OK)
+async def delete_scenario(slug: str):
+    """Delete a saved scenario"""
+    path = SCENARIOS_DIR / f"{slug}.json"
+    if not path.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Scenario '{slug}' not found")
+    path.unlink()
+    logger.info(f"Scenario deleted: {slug}")
+    return {"ok": True}
 
 
 class DemoGenerateRequestModel(BaseModel):

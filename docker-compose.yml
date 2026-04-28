@@ -34,6 +34,8 @@ services:
       CUOPT_MEMORY_PER_INSTANCE: ${CUOPT_MEMORY_PER_INSTANCE:-1024}
       GPU_MEMORY_INITIAL: ${GPU_MEMORY_INITIAL:-1073741824}
       GPU_MEMORY_MAX: ${GPU_MEMORY_MAX:-8589934592}
+    volumes:
+      - ./data/scenarios:/app/data/scenarios
     ports:
       - "${API_PORT:-8000}:8000"
     deploy:

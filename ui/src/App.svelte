@@ -3,7 +3,7 @@
   import Sidebar from './lib/Sidebar.svelte'
   import ResultsPanel from './lib/ResultsPanel.svelte'
   import DemoPanel from './lib/DemoPanel.svelte'
-  import { optimize } from './lib/api.js'
+  import { optimize, saveScenario } from './lib/api.js'
 
   const ROUTE_COLORS = ['#6c63ff','#00c896','#ff6b35','#0a84ff','#ffd60a','#ff2d55','#bf5af2','#30d158']
 
@@ -91,6 +91,33 @@
     random:    '📍 Random locations — no POI data found for this area',
   }
 
+  // Save bar
+  let showSaveBar = false
+  let saveName = ''
+  let saveLoading = false
+  let saveError = null
+  let saveSuccess = false
+  let currentCity = ''
+  let currentSource = 'manual'
+
+  async function handleSave() {
+    if (!saveName.trim()) return
+    saveLoading = true; saveError = null; saveSuccess = false
+    try {
+      await saveScenario(saveName.trim(), technicians, workOrders, currentCity, currentSource)
+      saveSuccess = true
+      saveName = ''
+      setTimeout(() => { showSaveBar = false; saveSuccess = false }, 1200)
+    } catch (e) { saveError = e.message }
+    saveLoading = false
+  }
+
+  function openSaveBar() {
+    saveName = currentCity ? currentCity.split(',')[0].trim() : ''
+    saveError = null; saveSuccess = false
+    showSaveBar = true
+  }
+
   let settings = {
     enforce_skill_constraints: false,
     minimize_fleet: false,
@@ -170,6 +197,8 @@
     error = null
     showDemoPanel = false
     clearTimeout(_demoNoticeTimer)
+    currentCity = detail.city ?? ''
+    currentSource = detail.source ?? 'manual'
     demoNotice = SOURCE_LABELS[detail.source] ?? null
     _demoNoticeTimer = setTimeout(() => { demoNotice = null }, 5000)
   }
@@ -236,6 +265,9 @@
       </div>
       <button class="settings-btn" class:active={showSettings} on:click={() => showSettings = !showSettings}>⚙ Settings</button>
       <button class="demo-btn" on:click={() => showDemoPanel = true} title="Generate demo data for any city">✦ Demo</button>
+      {#if technicians.length > 0}
+        <button class="save-btn" on:click={openSaveBar} title="Save current data as a scenario">💾 Save</button>
+      {/if}
       <button class="reset-btn" on:click={handleReset} title="Reset to default data">↺ Reset</button>
       <button
         class="optimize-btn"
@@ -246,6 +278,28 @@
       </button>
     </div>
   </header>
+
+  {#if showSaveBar}
+    <div class="save-bar">
+      {#if saveSuccess}
+        <span class="save-ok">✓ Scenario saved</span>
+      {:else}
+        <input
+          class="save-input"
+          type="text"
+          bind:value={saveName}
+          placeholder="Scenario name…"
+          disabled={saveLoading}
+          on:keydown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') showSaveBar = false }}
+        />
+        {#if saveError}<span class="save-err">{saveError}</span>{/if}
+        <button class="save-cancel" on:click={() => showSaveBar = false} disabled={saveLoading}>Cancel</button>
+        <button class="save-confirm" on:click={handleSave} disabled={saveLoading || !saveName.trim()}>
+          {saveLoading ? 'Saving…' : '💾 Save'}
+        </button>
+      {/if}
+    </div>
+  {/if}
 
   {#if loading || progress > 0}
     <div class="progress-wrap">
@@ -422,6 +476,38 @@
     border: 1px solid #2d3250;
   }
   .demo-btn:hover { color: #e0e6f0; border-color: #00c896; background: #1a2e2a; }
+
+  .save-btn {
+    background: #232640; color: #8892b0; padding: 9px 14px;
+    border-radius: 8px; font-size: 13px; font-weight: 600;
+    border: 1px solid #2d3250;
+  }
+  .save-btn:hover { color: #e0e6f0; border-color: #00c896; background: #1a2e2a; }
+
+  .save-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 16px; background: #13151f; border-bottom: 1px solid #2d3250;
+    flex-shrink: 0;
+  }
+  .save-input {
+    flex: 1; max-width: 260px; padding: 6px 10px;
+    background: #232640; border: 1px solid #2d3250; border-radius: 7px;
+    color: #e0e6f0; font-size: 13px;
+  }
+  .save-input:focus { border-color: #6c63ff; outline: none; }
+  .save-err { font-size: 12px; color: #e74c3c; flex: 1; }
+  .save-ok { font-size: 13px; color: #00c896; font-weight: 600; }
+  .save-cancel {
+    padding: 6px 12px; background: none; color: #8892b0;
+    border: 1px solid #2d3250; border-radius: 7px; font-size: 12px;
+  }
+  .save-cancel:hover:not(:disabled) { color: #e0e6f0; }
+  .save-confirm {
+    padding: 6px 14px; background: #6c63ff; color: #fff;
+    border-radius: 7px; font-size: 12px; font-weight: 700;
+  }
+  .save-confirm:hover:not(:disabled) { background: #5a52d5; }
+  .save-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .settings-backdrop {
     position: absolute; inset: 0; background: rgba(0,0,0,0.4);
