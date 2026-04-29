@@ -1,0 +1,947 @@
+{
+  "slug": "petaling-jaya8-40",
+  "name": "Petaling Jaya8-40",
+  "city": "Petaling Jaya, Petaling, Selangor, Malaysia",
+  "source": "overpass",
+  "created_at": "2026-04-28T23:23:43.047067",
+  "tech_count": 8,
+  "order_count": 40,
+  "technicians": [
+    {
+      "id": "TECH001",
+      "name": "Nur Taylor",
+      "start_location": {
+        "latitude": 3.118712,
+        "longitude": 101.580391,
+        "address": "Petaling Jaya"
+      },
+      "work_shift": {
+        "earliest": 480,
+        "latest": 1020
+      },
+      "break_window": {
+        "earliest": 720,
+        "latest": 780
+      },
+      "break_duration": 60,
+      "skills": [
+        "electrical",
+        "HVAC"
+      ],
+      "max_daily_orders": 8,
+      "max_travel_time": 300,
+      "hourly_rate": 75,
+      "vehicle_type": "van",
+      "drop_return_trip": false
+    },
+    {
+      "id": "TECH002",
+      "name": "Kumar Jones",
+      "start_location": {
+        "latitude": 3.185202,
+        "longitude": 101.61493,
+        "address": "Petaling Jaya"
+      },
+      "work_shift": {
+        "earliest": 480,
+        "latest": 1020
+      },
+      "break_window": {
+        "earliest": 720,
+        "latest": 780
+      },
+      "break_duration": 60,
+      "skills": [
+        "plumbing",
+        "mechanical"
+      ],
+      "max_daily_orders": 8,
+      "max_travel_time": 300,
+      "hourly_rate": 59,
+      "vehicle_type": "car",
+      "drop_return_trip": false
+    },
+    {
+      "id": "TECH003",
+      "name": "Lim Wei Liang",
+      "start_location": {
+        "latitude": 3.090683,
+        "longitude": 101.58213,
+        "address": "Petaling Jaya"
+      },
+      "work_shift": {
+        "earliest": 480,
+        "latest": 1020
+      },
+      "break_window": {
+        "earliest": 720,
+        "latest": 780
+      },
+      "break_duration": 60,
+      "skills": [
+        "mechanical",
+        "inspection"
+      ],
+      "max_daily_orders": 8,
+      "max_travel_time": 300,
+      "hourly_rate": 75,
+      "vehicle_type": "van",
+      "drop_return_trip": false
+    },
+    {
+      "id": "TECH004",
+      "name": "Vikram Williams",
+      "start_location": {
+        "latitude": 3.135676,
+        "longitude": 101.580658,
+        "address": "Petaling Jaya"
+      },
+      "work_shift": {
+        "earliest": 480,
+        "latest": 1020
+      },
+      "break_window": {
+        "earliest": 720,
+        "latest": 780
+      },
+      "break_duration": 60,
+      "skills": [
+        "networking",
+        "inspection"
+      ],
+      "max_daily_orders": 8,
+      "max_travel_time": 300,
+      "hourly_rate": 64,
+      "vehicle_type": "car",
+      "drop_return_trip": false
+    },
+    {
+      "id": "TECH005",
+      "name": "Jessica Razak",
+      "start_location": {
+        "latitude": 3.096828,
+        "longitude": 101.589641,
+        "address": "Petaling Jaya"
+      },
+      "work_shift": {
+        "earliest": 480,
+        "latest": 1020
+      },
+      "break_window": {
+        "earliest": 720,
+        "latest": 780
+      },
+      "break_duration": 60,
+      "skills": [
+        "inspection",
+        "electrical"
+      ],
+      "max_daily_orders": 8,
+      "max_travel_time": 300,
+      "hourly_rate": 81,
+      "vehicle_type": "van",
+      "drop_return_trip": false
+    },
+    {
+      "id": "TECH006",
+      "name": "Wong Jones",
+      "start_location": {
+        "latitude": 3.182824,
+        "longitude": 101.617492,
+        "address": "Petaling Jaya"
+      },
+      "work_shift": {
+        "earliest": 480,
+        "latest": 1020
+      },
+      "break_window": {
+        "earliest": 720,
+        "latest": 780
+      },
+      "break_duration": 60,
+      "skills": [
+        "HVAC",
+        "mechanical"
+      ],
+      "max_daily_orders": 8,
+      "max_travel_time": 300,
+      "hourly_rate": 69,
+      "vehicle_type": "van",
+      "drop_return_trip": false
+    },
+    {
+      "id": "TECH007",
+      "name": "Maria Chee Keong",
+      "start_location": {
+        "latitude": 3.116715,
+        "longitude": 101.619751,
+        "address": "Petaling Jaya"
+      },
+      "work_shift": {
+        "earliest": 480,
+        "latest": 1020
+      },
+      "break_window": {
+        "earliest": 720,
+        "latest": 780
+      },
+      "break_duration": 60,
+      "skills": [
+        "electrical"
+      ],
+      "max_daily_orders": 8,
+      "max_travel_time": 300,
+      "hourly_rate": 73,
+      "vehicle_type": "van",
+      "drop_return_trip": false
+    },
+    {
+      "id": "TECH008",
+      "name": "David Smith",
+      "start_location": {
+        "latitude": 3.134602,
+        "longitude": 101.594859,
+        "address": "Petaling Jaya"
+      },
+      "work_shift": {
+        "earliest": 480,
+        "latest": 1020
+      },
+      "break_window": {
+        "earliest": 720,
+        "latest": 780
+      },
+      "break_duration": 60,
+      "skills": [
+        "HVAC"
+      ],
+      "max_daily_orders": 8,
+      "max_travel_time": 300,
+      "hourly_rate": 55,
+      "vehicle_type": "car",
+      "drop_return_trip": false
+    }
+  ],
+  "work_orders": [
+    {
+      "id": "WO001",
+      "customer_name": "Maybank",
+      "location": {
+        "latitude": 3.157622,
+        "longitude": 101.612491,
+        "address": "Maybank"
+      },
+      "priority": "emergency",
+      "work_type": "installation",
+      "service_time": 90,
+      "required_skills": [
+        "networking"
+      ],
+      "description": "Installation job",
+      "estimated_value": 750,
+      "time_window": null
+    },
+    {
+      "id": "WO002",
+      "customer_name": "Utusan Melayu (M) Bhd",
+      "location": {
+        "latitude": 3.111293,
+        "longitude": 101.633859,
+        "address": "Petaling Jaya"
+      },
+      "priority": "high",
+      "work_type": "installation",
+      "service_time": 105,
+      "required_skills": [
+        "electrical"
+      ],
+      "description": "Installation job",
+      "estimated_value": 3050,
+      "time_window": null
+    },
+    {
+      "id": "WO003",
+      "customer_name": "Affin Islamic",
+      "location": {
+        "latitude": 3.116203,
+        "longitude": 101.622247,
+        "address": "Petaling Jaya"
+      },
+      "priority": "critical",
+      "work_type": "inspection",
+      "service_time": 45,
+      "required_skills": [
+        "inspection"
+      ],
+      "description": "Inspection job",
+      "estimated_value": 200,
+      "time_window": null
+    },
+    {
+      "id": "WO004",
+      "customer_name": "Amalan Setar",
+      "location": {
+        "latitude": 3.140776,
+        "longitude": 101.627013,
+        "address": "Amalan Setar"
+      },
+      "priority": "medium",
+      "work_type": "repair",
+      "service_time": 90,
+      "required_skills": [
+        "electrical"
+      ],
+      "description": "Repair job",
+      "estimated_value": 2800,
+      "time_window": null
+    },
+    {
+      "id": "WO005",
+      "customer_name": "FedEx World",
+      "location": {
+        "latitude": 3.136255,
+        "longitude": 101.621962,
+        "address": "FedEx World"
+      },
+      "priority": "medium",
+      "work_type": "repair",
+      "service_time": 60,
+      "required_skills": [
+        "plumbing"
+      ],
+      "description": "Repair job",
+      "estimated_value": 1150,
+      "time_window": null
+    },
+    {
+      "id": "WO006",
+      "customer_name": "Maybank",
+      "location": {
+        "latitude": 3.095613,
+        "longitude": 101.629414,
+        "address": "Maybank"
+      },
+      "priority": "medium",
+      "work_type": "installation",
+      "service_time": 90,
+      "required_skills": [
+        "networking"
+      ],
+      "description": "Installation job",
+      "estimated_value": 2600,
+      "time_window": null
+    },
+    {
+      "id": "WO007",
+      "customer_name": "KTA Tenaga",
+      "location": {
+        "latitude": 3.117861,
+        "longitude": 101.594154,
+        "address": "KTA Tenaga"
+      },
+      "priority": "low",
+      "work_type": "repair",
+      "service_time": 60,
+      "required_skills": [
+        "mechanical"
+      ],
+      "description": "Repair job",
+      "estimated_value": 800,
+      "time_window": null
+    },
+    {
+      "id": "WO008",
+      "customer_name": "RHB Premier Banking",
+      "location": {
+        "latitude": 3.099917,
+        "longitude": 101.644025,
+        "address": "Petaling Jaya"
+      },
+      "priority": "high",
+      "work_type": "maintenance",
+      "service_time": 105,
+      "required_skills": [
+        "electrical"
+      ],
+      "description": "Maintenance job",
+      "estimated_value": 1500,
+      "time_window": null
+    },
+    {
+      "id": "WO009",
+      "customer_name": "RHB Premier Banking",
+      "location": {
+        "latitude": 3.099917,
+        "longitude": 101.644025,
+        "address": "Petaling Jaya"
+      },
+      "priority": "critical",
+      "work_type": "repair",
+      "service_time": 45,
+      "required_skills": [
+        "electrical"
+      ],
+      "description": "Repair job",
+      "estimated_value": 1350,
+      "time_window": null
+    },
+    {
+      "id": "WO010",
+      "customer_name": "Bank Rakyat",
+      "location": {
+        "latitude": 3.136408,
+        "longitude": 101.623882,
+        "address": "Bank Rakyat"
+      },
+      "priority": "medium",
+      "work_type": "inspection",
+      "service_time": 30,
+      "required_skills": [
+        "inspection"
+      ],
+      "description": "Inspection job",
+      "estimated_value": 250,
+      "time_window": null
+    },
+    {
+      "id": "WO011",
+      "customer_name": "Prudential Customer Service Centre, Taman SEA",
+      "location": {
+        "latitude": 3.115832,
+        "longitude": 101.614052,
+        "address": "67 Jalan SS 23/15, Petaling Jaya"
+      },
+      "priority": "low",
+      "work_type": "emergency",
+      "service_time": 45,
+      "required_skills": [
+        "mechanical"
+      ],
+      "description": "Emergency job",
+      "estimated_value": 2900,
+      "time_window": null
+    },
+    {
+      "id": "WO012",
+      "customer_name": "RHB Bank",
+      "location": {
+        "latitude": 3.14678,
+        "longitude": 101.615587,
+        "address": "RHB Bank"
+      },
+      "priority": "low",
+      "work_type": "installation",
+      "service_time": 120,
+      "required_skills": [
+        "networking"
+      ],
+      "description": "Installation job",
+      "estimated_value": 2850,
+      "time_window": null
+    },
+    {
+      "id": "WO013",
+      "customer_name": "Poliklinik Lourdes",
+      "location": {
+        "latitude": 3.101073,
+        "longitude": 101.641006,
+        "address": "Jalan Barat, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "repair",
+      "service_time": 75,
+      "required_skills": [
+        "electrical"
+      ],
+      "description": "Repair job",
+      "estimated_value": 850,
+      "time_window": null
+    },
+    {
+      "id": "WO014",
+      "customer_name": "Soft Space Sdn Bhd",
+      "location": {
+        "latitude": 3.126639,
+        "longitude": 101.645822,
+        "address": "905B Jalan 16/11, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "repair",
+      "service_time": 75,
+      "required_skills": [
+        "plumbing"
+      ],
+      "description": "Repair job",
+      "estimated_value": 500,
+      "time_window": null
+    },
+    {
+      "id": "WO015",
+      "customer_name": "Affin Bank",
+      "location": {
+        "latitude": 3.098286,
+        "longitude": 101.644724,
+        "address": "Jalan Yong Shook Lin, Petaling Jaya"
+      },
+      "priority": "high",
+      "work_type": "inspection",
+      "service_time": 45,
+      "required_skills": [
+        "electrical"
+      ],
+      "description": "Inspection job",
+      "estimated_value": 1400,
+      "time_window": null
+    },
+    {
+      "id": "WO016",
+      "customer_name": "Perdana Parkcity Sdn Bhd",
+      "location": {
+        "latitude": 3.187228,
+        "longitude": 101.63493,
+        "address": "Perdana Parkcity Sdn Bhd"
+      },
+      "priority": "critical",
+      "work_type": "emergency",
+      "service_time": 30,
+      "required_skills": [
+        "plumbing"
+      ],
+      "description": "Emergency job",
+      "estimated_value": 2100,
+      "time_window": null
+    },
+    {
+      "id": "WO017",
+      "customer_name": "Hong Leong Bank",
+      "location": {
+        "latitude": 3.099913,
+        "longitude": 101.644159,
+        "address": "Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "installation",
+      "service_time": 165,
+      "required_skills": [
+        "electrical"
+      ],
+      "description": "Installation job",
+      "estimated_value": 2800,
+      "time_window": null
+    },
+    {
+      "id": "WO018",
+      "customer_name": "Hong Leong Bank",
+      "location": {
+        "latitude": 3.107034,
+        "longitude": 101.624925,
+        "address": "Hong Leong Bank"
+      },
+      "priority": "low",
+      "work_type": "maintenance",
+      "service_time": 105,
+      "required_skills": [
+        "HVAC"
+      ],
+      "description": "Maintenance job",
+      "estimated_value": 2400,
+      "time_window": null
+    },
+    {
+      "id": "WO019",
+      "customer_name": "TMpoint",
+      "location": {
+        "latitude": 3.098281,
+        "longitude": 101.645385,
+        "address": "Jalan Yong Shook Lin, Petaling Jaya"
+      },
+      "priority": "high",
+      "work_type": "installation",
+      "service_time": 165,
+      "required_skills": [
+        "electrical"
+      ],
+      "description": "Installation job",
+      "estimated_value": 2850,
+      "time_window": null
+    },
+    {
+      "id": "WO020",
+      "customer_name": "Honsbridge Academy",
+      "location": {
+        "latitude": 3.152302,
+        "longitude": 101.592325,
+        "address": "Honsbridge Academy"
+      },
+      "priority": "medium",
+      "work_type": "maintenance",
+      "service_time": 90,
+      "required_skills": [
+        "electrical"
+      ],
+      "description": "Maintenance job",
+      "estimated_value": 2500,
+      "time_window": null
+    },
+    {
+      "id": "WO021",
+      "customer_name": "Poliklinik Vista",
+      "location": {
+        "latitude": 3.100405,
+        "longitude": 101.641374,
+        "address": "Lorong 8/1E, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "installation",
+      "service_time": 120,
+      "required_skills": [
+        "electrical"
+      ],
+      "description": "Installation job",
+      "estimated_value": 2550,
+      "time_window": null
+    },
+    {
+      "id": "WO022",
+      "customer_name": "TMpoint",
+      "location": {
+        "latitude": 3.098281,
+        "longitude": 101.645385,
+        "address": "Jalan Yong Shook Lin, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "inspection",
+      "service_time": 45,
+      "required_skills": [
+        "inspection"
+      ],
+      "description": "Inspection job",
+      "estimated_value": 2500,
+      "time_window": null
+    },
+    {
+      "id": "WO023",
+      "customer_name": "Global Art",
+      "location": {
+        "latitude": 3.141491,
+        "longitude": 101.627781,
+        "address": "Global Art"
+      },
+      "priority": "high",
+      "work_type": "installation",
+      "service_time": 90,
+      "required_skills": [
+        "electrical"
+      ],
+      "description": "Installation job",
+      "estimated_value": 550,
+      "time_window": null
+    },
+    {
+      "id": "WO024",
+      "customer_name": "Pusat Tuisyen Mawar",
+      "location": {
+        "latitude": 3.14183,
+        "longitude": 101.628667,
+        "address": "Pusat Tuisyen Mawar"
+      },
+      "priority": "critical",
+      "work_type": "repair",
+      "service_time": 60,
+      "required_skills": [
+        "plumbing"
+      ],
+      "description": "Repair job",
+      "estimated_value": 2850,
+      "time_window": null
+    },
+    {
+      "id": "WO025",
+      "customer_name": "RHB Islamic Bank",
+      "location": {
+        "latitude": 3.101872,
+        "longitude": 101.600162,
+        "address": "Jalan SS 6/5A, Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "maintenance",
+      "service_time": 75,
+      "required_skills": [
+        "mechanical"
+      ],
+      "description": "Maintenance job",
+      "estimated_value": 1750,
+      "time_window": null
+    },
+    {
+      "id": "WO026",
+      "customer_name": "Liqui Moly",
+      "location": {
+        "latitude": 3.115069,
+        "longitude": 101.588569,
+        "address": "Liqui Moly"
+      },
+      "priority": "low",
+      "work_type": "emergency",
+      "service_time": 60,
+      "required_skills": [
+        "mechanical"
+      ],
+      "description": "Emergency job",
+      "estimated_value": 2550,
+      "time_window": null
+    },
+    {
+      "id": "WO027",
+      "customer_name": "Celcom Petaling Jaya",
+      "location": {
+        "latitude": 3.099834,
+        "longitude": 101.642983,
+        "address": "Petaling Jaya"
+      },
+      "priority": "high",
+      "work_type": "maintenance",
+      "service_time": 60,
+      "required_skills": [
+        "mechanical"
+      ],
+      "description": "Maintenance job",
+      "estimated_value": 2600,
+      "time_window": null
+    },
+    {
+      "id": "WO028",
+      "customer_name": "Maybank",
+      "location": {
+        "latitude": 3.151393,
+        "longitude": 101.592208,
+        "address": "2 Jalan PJU 5/14"
+      },
+      "priority": "high",
+      "work_type": "emergency",
+      "service_time": 60,
+      "required_skills": [
+        "mechanical"
+      ],
+      "description": "Emergency job",
+      "estimated_value": 2500,
+      "time_window": null
+    },
+    {
+      "id": "WO029",
+      "customer_name": "Maybank",
+      "location": {
+        "latitude": 3.099613,
+        "longitude": 101.64658,
+        "address": "Petaling Jaya"
+      },
+      "priority": "high",
+      "work_type": "emergency",
+      "service_time": 60,
+      "required_skills": [
+        "electrical"
+      ],
+      "description": "Emergency job",
+      "estimated_value": 1350,
+      "time_window": null
+    },
+    {
+      "id": "WO030",
+      "customer_name": "UOB",
+      "location": {
+        "latitude": 3.099634,
+        "longitude": 101.644515,
+        "address": "Petaling Jaya"
+      },
+      "priority": "medium",
+      "work_type": "maintenance",
+      "service_time": 75,
+      "required_skills": [
+        "electrical"
+      ],
+      "description": "Maintenance job",
+      "estimated_value": 1900,
+      "time_window": null
+    },
+    {
+      "id": "WO031",
+      "customer_name": "Nielsen Malaysia",
+      "location": {
+        "latitude": 3.110144,
+        "longitude": 101.63825,
+        "address": "1 Jalan Kemajuan, Petaling Jaya"
+      },
+      "priority": "low",
+      "work_type": "installation",
+      "service_time": 165,
+      "required_skills": [
+        "electrical"
+      ],
+      "description": "Installation job",
+      "estimated_value": 700,
+      "time_window": null
+    },
+    {
+      "id": "WO032",
+      "customer_name": "Maybank",
+      "location": {
+        "latitude": 3.153934,
+        "longitude": 101.622944,
+        "address": "Maybank"
+      },
+      "priority": "high",
+      "work_type": "inspection",
+      "service_time": 60,
+      "required_skills": [
+        "electrical"
+      ],
+      "description": "Inspection job",
+      "estimated_value": 2300,
+      "time_window": null
+    },
+    {
+      "id": "WO033",
+      "customer_name": "Agensi Pekerjaan Chi",
+      "location": {
+        "latitude": 3.141629,
+        "longitude": 101.627937,
+        "address": "Agensi Pekerjaan Chi"
+      },
+      "priority": "medium",
+      "work_type": "inspection",
+      "service_time": 45,
+      "required_skills": [
+        "electrical"
+      ],
+      "description": "Inspection job",
+      "estimated_value": 400,
+      "time_window": null
+    },
+    {
+      "id": "WO034",
+      "customer_name": "Public Bank",
+      "location": {
+        "latitude": 3.099906,
+        "longitude": 101.644409,
+        "address": "Petaling Jaya"
+      },
+      "priority": "high",
+      "work_type": "repair",
+      "service_time": 45,
+      "required_skills": [
+        "mechanical"
+      ],
+      "description": "Repair job",
+      "estimated_value": 350,
+      "time_window": null
+    },
+    {
+      "id": "WO035",
+      "customer_name": "SEQU TAS Safety Training Centre",
+      "location": {
+        "latitude": 3.124564,
+        "longitude": 101.611721,
+        "address": "1071 Jalan Jenjarum, Petaling Jaya"
+      },
+      "priority": "critical",
+      "work_type": "inspection",
+      "service_time": 45,
+      "required_skills": [
+        "electrical"
+      ],
+      "description": "Inspection job",
+      "estimated_value": 3050,
+      "time_window": null
+    },
+    {
+      "id": "WO036",
+      "customer_name": "Pos Malaysia SS3 Sea Park",
+      "location": {
+        "latitude": 3.110313,
+        "longitude": 101.611865,
+        "address": "Pos Malaysia SS3 Sea Park"
+      },
+      "priority": "high",
+      "work_type": "installation",
+      "service_time": 150,
+      "required_skills": [
+        "networking"
+      ],
+      "description": "Installation job",
+      "estimated_value": 2800,
+      "time_window": null
+    },
+    {
+      "id": "WO037",
+      "customer_name": "Panacom Sales & Services",
+      "location": {
+        "latitude": 3.14199,
+        "longitude": 101.628094,
+        "address": "Panacom Sales & Services"
+      },
+      "priority": "high",
+      "work_type": "installation",
+      "service_time": 105,
+      "required_skills": [
+        "networking"
+      ],
+      "description": "Installation job",
+      "estimated_value": 1200,
+      "time_window": null
+    },
+    {
+      "id": "WO038",
+      "customer_name": "KATSANA Advanced Telematics",
+      "location": {
+        "latitude": 3.1621,
+        "longitude": 101.617846,
+        "address": "Lot 2805 Jalan Damansara, Kuala Lumpur"
+      },
+      "priority": "low",
+      "work_type": "maintenance",
+      "service_time": 90,
+      "required_skills": [
+        "HVAC"
+      ],
+      "description": "Maintenance job",
+      "estimated_value": 3050,
+      "time_window": null
+    },
+    {
+      "id": "WO039",
+      "customer_name": "London Children's Clinic",
+      "location": {
+        "latitude": 3.184629,
+        "longitude": 101.60779,
+        "address": "London Children's Clinic"
+      },
+      "priority": "low",
+      "work_type": "repair",
+      "service_time": 45,
+      "required_skills": [
+        "mechanical"
+      ],
+      "description": "Repair job",
+      "estimated_value": 650,
+      "time_window": null
+    },
+    {
+      "id": "WO040",
+      "customer_name": "in Publishers",
+      "location": {
+        "latitude": 3.121211,
+        "longitude": 101.621055,
+        "address": "71 Jalan SS 2/75, Petaling Jaya"
+      },
+      "priority": "low",
+      "work_type": "emergency",
+      "service_time": 60,
+      "required_skills": [
+        "mechanical"
+      ],
+      "description": "Emergency job",
+      "estimated_value": 1250,
+      "time_window": null
+    }
+  ]
+}
