@@ -6,10 +6,11 @@ Exact C++ implementation parity - single API calls with fail-fast behavior
 import requests
 import json
 import logging
+import math
+import time
+from collections import OrderedDict
 from typing import List, Dict, Any, Optional, Tuple
 from urllib.parse import quote
-import time
-import math
 
 from config import CONFIG
 from core.models import Location, DistanceMatrix
@@ -17,7 +18,8 @@ from core.models import Location, DistanceMatrix
 
 logger = logging.getLogger(__name__)
 
-_matrix_cache: Dict[tuple, DistanceMatrix] = {}
+_MATRIX_CACHE_MAX = 256
+_matrix_cache: OrderedDict = OrderedDict()
 
 
 class OSRMError(Exception):
@@ -42,9 +44,7 @@ class OSRMClient:
         self.default_chunk_size = 100
 
         logger.info(f"Initialized OSRM client for {self.base_url}")
-        print(f"🌐 OSRM Client initialized: {self.base_url}")
-        print(f"🚀 C++ parity mode: max {self.max_locations} locations, chunk size {self.default_chunk_size}")
-        print(f"⚡ Fail-fast enabled, no artificial limits")
+        logger.debug(f"C++ parity mode: max {self.max_locations} locations, chunk size {self.default_chunk_size}")
 
     def health_check(self) -> bool:
         """Check if OSRM server is accessible and API is working"""
@@ -70,7 +70,6 @@ class OSRMClient:
 
     def _calculate_chunk_size(self, locations: List[Location]) -> int:
         """Return C++ standard chunk size of 100"""
-        print(f"🔒 Using C++ standard chunk size: 100 locations")
         return 100
 
     def _build_chunked_url(self, locations: List[Location],
@@ -112,12 +111,10 @@ class OSRMClient:
         if params:
             url += "?" + "&".join(params)
 
-        # Validate URL length and log the actual URL for debugging
         if len(url) > 1500:  # Conservative limit
             raise OSRMError(f"Generated URL too long ({len(url)} chars): {url[:200]}...")
 
-        print(f"🔍 Generated URL length: {len(url)} chars")
-        print(f"🔍 Generated URL: {url}")
+        logger.debug(f"Generated URL: {len(url)} chars")
         return url
 
     def _call_chunked_api(self, url: str) -> Dict[str, Any]:
@@ -127,7 +124,7 @@ class OSRMClient:
             response = requests.get(url, timeout=self.timeout)
             call_duration = time.time() - start_time
 
-            print(f"📡 OSRM API call: {len(url)} chars, {call_duration:.2f}s, status {response.status_code}")
+            logger.debug(f"OSRM API call: {len(url)} chars, {call_duration:.2f}s, status {response.status_code}")
 
             if response.status_code != 200:
                 error_detail = response.text[:500] if len(response.text) > 500 else response.text
@@ -201,13 +198,10 @@ class OSRMClient:
         if params:
             url += "?" + "&".join(params)
 
-        # URL length check (generous for C++ parity)
         if len(url) > 3000:
             raise OSRMError(f"URL too long ({len(url)} chars). Reduce chunk size.")
 
-        print(f"🔍 Final URL length: {len(url)} chars")
-        print(f"🔍 Final URL: {url}")
-
+        logger.debug(f"Final URL: {len(url)} chars")
         return url
 
     def call_table_api(self, locations: List[Location],
@@ -216,58 +210,37 @@ class OSRMClient:
         """Call OSRM table API exactly like C++ implementation"""
         url = self.build_table_url(locations, sources, destinations)
 
-        logger.debug(f"Calling OSRM API: {url}")
-        print(f"🌐 OSRM API Call (C++ parity):")
-        print(f"   URL: {url[:100]}{'...' if len(url) > 100 else ''}")
-        print(f"   Locations: {len(locations)}")
-        if sources is None and destinations is None:
-            print(f"   Mode: Full matrix (no sources/destinations)")
-        else:
-            print(f"   Mode: Partial matrix (sources: {len(sources) if sources else 0}, dest: {len(destinations) if destinations else 0})")
+        logger.debug(f"OSRM API call: {len(locations)} locations")
 
         try:
             start_time = time.time()
             response = requests.get(url, timeout=self.timeout)
             call_duration = time.time() - start_time
 
-            print(f"   Response time: {call_duration:.2f}s")
-            print(f"   Status code: {response.status_code}")
-
-            logger.debug(f"OSRM API call completed in {call_duration:.2f}s")
+            logger.debug(f"OSRM API call: {call_duration:.2f}s, status {response.status_code}")
 
             if response.status_code != 200:
-                print(f"❌ OSRM API Error: Status {response.status_code}")
-                print(f"   Response: {response.text[:300]}...")
                 raise OSRMError(f"OSRM API returned status {response.status_code}: {response.text}")
 
             data = response.json()
 
-            # Print response details
-            print(f"   Response code: {data.get('code', 'Not specified')}")
             if data.get('code') != 'Ok':
-                print(f"❌ OSRM API Error: {data.get('message', 'Unknown error')}")
                 error_msg = data.get('message', 'Unknown error')
                 raise OSRMError(f"OSRM API error: {error_msg}")
 
-            # Print successful response summary
-            print(f"✅ OSRM API Success:")
             if 'durations' in data:
-                durations = data['durations']
-                print(f"   Duration matrix: {len(durations)}x{len(durations[0])}")
+                d = data['durations']
+                logger.debug(f"OSRM duration matrix: {len(d)}x{len(d[0])}")
 
             return data
 
         except requests.exceptions.Timeout:
-            print(f"❌ OSRM API timeout after {self.timeout}s")
             raise OSRMError(f"OSRM API timeout after {self.timeout}s")
         except requests.exceptions.ConnectionError:
-            print(f"❌ Cannot connect to OSRM server at {self.base_url}")
             raise OSRMError(f"Cannot connect to OSRM server at {self.base_url}")
         except requests.exceptions.RequestException as e:
-            print(f"❌ OSRM API request failed: {e}")
             raise OSRMError(f"OSRM API request failed: {e}")
         except json.JSONDecodeError:
-            print(f"❌ Invalid JSON response from OSRM")
             raise OSRMError("Invalid JSON response from OSRM API")
 
     def create_distance_matrix(self, locations: List[Location]) -> DistanceMatrix:
@@ -283,8 +256,7 @@ class OSRMClient:
                 distances=[[0.0]] if 'distance' in self.config['annotations'] else None
             )
 
-        # Always use single call - C++ doesn't chunk for reasonable sizes
-        print(f"🚀 Single API call for {len(locations)} locations (C++ parity mode)")
+        logger.debug(f"Single OSRM call for {len(locations)} locations")
         return self._create_single_matrix(locations)
 
     def _create_single_matrix(self, locations: List[Location]) -> DistanceMatrix:
@@ -296,7 +268,6 @@ class OSRMClient:
 
         # Convert from seconds to minutes if configured
         time_unit = CONFIG['business']['time_unit']
-        print(f"🕒 Converting time units from seconds to {time_unit}")
 
         # Unreachable pairs from OSRM arrive as None (JSON null).
         # Use float('nan') so solver.py's nan_to_num replaces them with a
@@ -313,7 +284,7 @@ class OSRMClient:
         if 'distances' in response:
             distances = response['distances']
 
-        print(f"✅ Distance matrix created: {len(durations)}x{len(durations[0])} in {time_unit}")
+        logger.debug(f"Distance matrix: {len(durations)}x{len(durations[0])} ({time_unit})")
 
         return DistanceMatrix(
             locations=locations,
@@ -327,11 +298,7 @@ class OSRMClient:
         durations = [[0.0] * n for _ in range(n)]
         distances = [[0.0] * n for _ in range(n)] if 'distance' in self.config['annotations'] else None
 
-        logger.info(f"Creating chunked distance matrix for {n} locations with chunk size {chunk_size}")
-        print(f"🔄 C++ chunking:")
-        print(f"   Total locations: {n}")
-        print(f"   Chunk size: {chunk_size}")
-        print(f"   Number of chunks: {math.ceil(n / chunk_size) ** 2}")
+        logger.info(f"Creating chunked distance matrix: {n} locations, chunk size {chunk_size}, {math.ceil(n / chunk_size) ** 2} chunks")
 
         chunk_count = 0
         successful_chunks = 0
@@ -345,7 +312,7 @@ class OSRMClient:
                 dest_end = min(dest_start + chunk_size, n)
                 chunk_count += 1
 
-                print(f"   Processing chunk {chunk_count}/{total_chunks}: sources[{source_start}:{source_end}] → dest[{dest_start}:{dest_end}]")
+                logger.debug(f"Chunk {chunk_count}/{total_chunks}: sources[{source_start}:{source_end}] → dest[{dest_start}:{dest_end}]")
 
                 try:
                     # Create chunk locations and mappings
@@ -395,18 +362,13 @@ class OSRMClient:
                                 distances[global_src][global_dest] = batch_distances[src_idx][dest_idx]
 
                     successful_chunks += 1
-                    print(f"   ✅ Chunk {chunk_count} completed successfully")
+                    logger.debug(f"Chunk {chunk_count} completed")
 
                 except Exception as e:
                     failed_chunks += 1
-                    print(f"   ❌ Chunk {chunk_count} failed: {e}")
-                    # Fail fast - re-raise the exception instead of using fallbacks
                     raise OSRMError(f"Chunk {chunk_count} failed, aborting: {e}")
 
-        print(f"✅ C++ chunked matrix completed:")
-        print(f"   Successful chunks: {successful_chunks}/{total_chunks}")
-        if failed_chunks > 0:
-            print(f"   Failed chunks: {failed_chunks}/{total_chunks} (operation aborted)")
+        logger.info(f"Chunked matrix complete: {successful_chunks}/{total_chunks} chunks")
 
         return DistanceMatrix(
             locations=locations,
@@ -457,11 +419,14 @@ def calculate_matrix_for_problem(technicians: List, work_orders: List) -> Distan
     cache_key = tuple((loc.latitude, loc.longitude) for loc in locations)
     if cache_key in _matrix_cache:
         logger.debug("OSRM matrix cache hit (%d locations)", len(locations))
+        _matrix_cache.move_to_end(cache_key)
         return _matrix_cache[cache_key]
 
     client = OSRMClient()
     result = client.create_distance_matrix(locations)
     _matrix_cache[cache_key] = result
+    if len(_matrix_cache) > _MATRIX_CACHE_MAX:
+        _matrix_cache.popitem(last=False)
     return result
 
 

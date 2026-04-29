@@ -4,17 +4,20 @@ using cuOpt and OSRM for route optimization
 OPTIMIZED FOR HIGH PERFORMANCE WITH CUDA STREAMS AND GPU MEMORY MANAGEMENT
 """
 
+import logging
 import os
 from typing import Dict, Any, Optional
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # OSRM Configuration
 # =============================================================================
 
 OSRM_CONFIG = {
-    'host': '192.168.100.20',
+    'host': 'localhost',
     'port': 5000,
-    'base_url': 'http://192.168.100.20:5000',
+    'base_url': 'http://localhost:5000',
     'table_endpoint': '/table/v1/driving/',
     'timeout': 30,  # seconds
     'max_locations_per_request': 500,  # OSRM limitation
@@ -261,15 +264,19 @@ LOGGING_CONFIG = {
         'performance_logging': True   # Keep performance metrics
     },
 
-    # Component logging levels - reduced for performance
+    # Component logging levels — keys must match logger names (logging.getLogger(__name__))
     'component_levels': {
-        'uvicorn': 'WARNING',     # Reduced from INFO
-        'fastapi': 'WARNING',     # Reduced from INFO
-        'osrm': 'WARNING',        # Reduced from INFO
-        'solver': 'WARNING',      # Reduced from INFO
-        'converter': 'WARNING',   # Reduced from INFO
-        'concurrent': 'INFO',     # Concurrent execution logging
-        'memory': 'INFO'          # Memory management logging
+        'uvicorn': 'WARNING',
+        'uvicorn.access': 'WARNING',
+        'fastapi': 'WARNING',
+        'core.osrm': 'WARNING',
+        'core.converter': 'WARNING',
+        'core.demo_generator': 'WARNING',
+        'core.solver': 'INFO',       # solver progress (solve times, status)
+        'core.solver_pool': 'INFO',  # concurrent execution lifecycle
+        'core.gpu_memory': 'INFO',   # memory pool events
+        'core.cuda_streams': 'INFO', # stream allocation
+        'config': 'WARNING',
     },
 
     # Concurrent execution specific logging
@@ -339,10 +346,15 @@ API_CONFIG = {
 # Configuration Assembly
 # =============================================================================
 
+_config_cache: Optional[Dict[str, Any]] = None
+
+
 def get_config() -> Dict[str, Any]:
-    """
-    Get application configuration with memory management settings
-    """
+    """Return application configuration, built once and cached for the process lifetime."""
+    global _config_cache
+    if _config_cache is not None:
+        return _config_cache
+
     config = {
         'osrm': OSRM_CONFIG.copy(),
         'cuopt': CUOPT_CONFIG.copy(),
@@ -353,14 +365,12 @@ def get_config() -> Dict[str, Any]:
         'api': API_CONFIG.copy()
     }
 
-    # Override with environment variables if present
-    if os.getenv('OSRM_HOST'):
-        config['osrm']['host'] = os.getenv('OSRM_HOST')
-        config['osrm']['base_url'] = f"http://{os.getenv('OSRM_HOST')}:{config['osrm']['port']}"
-
-    if os.getenv('OSRM_PORT'):
-        config['osrm']['port'] = int(os.getenv('OSRM_PORT'))
-        config['osrm']['base_url'] = f"http://{config['osrm']['host']}:{os.getenv('OSRM_PORT')}"
+    # OSRM host + port — merge into a single base_url so they can't diverge
+    osrm_host = os.getenv('OSRM_HOST', config['osrm']['host'])
+    osrm_port = int(os.getenv('OSRM_PORT', config['osrm']['port']))
+    config['osrm']['host'] = osrm_host
+    config['osrm']['port'] = osrm_port
+    config['osrm']['base_url'] = f"http://{osrm_host}:{osrm_port}"
 
     # Override concurrent instance count if environment variable is set
     # Support both old and new environment variable names for backward compatibility
@@ -386,6 +396,7 @@ def get_config() -> Dict[str, Any]:
     if os.getenv('GPU_MEMORY_MAX'):
         config['cuopt']['memory_management']['maximum_pool_size'] = int(os.getenv('GPU_MEMORY_MAX'))
 
+    _config_cache = config
     return config
 
 # =============================================================================
@@ -552,26 +563,24 @@ def validate_config() -> bool:
     # Check OSRM connectivity with a simple API test
     try:
         import requests
-        # First check if server responds to root (even with error)
         response = requests.get(f"{config['osrm']['base_url']}/", timeout=5)
         if response.status_code not in [200, 400]:
-            print(f"Warning: OSRM server returned unexpected status: {response.status_code}")
+            logger.warning(f"OSRM server returned unexpected status: {response.status_code}")
             return False
 
-        # Test with a simple coordinate to verify API actually works
         test_url = f"{config['osrm']['base_url']}/table/v1/driving/103.8198,1.3521;103.8478,1.3644"
         api_response = requests.get(test_url, timeout=10)
         if api_response.status_code == 200:
             api_data = api_response.json()
             if api_data.get('code') == 'Ok':
-                print("✅ OSRM server is accessible and API is working")
+                logger.info("OSRM server is accessible and API is working")
             else:
-                print(f"Warning: OSRM API returned: {api_data.get('message', 'Unknown error')}")
+                logger.warning(f"OSRM API returned: {api_data.get('message', 'Unknown error')}")
         else:
-            print(f"Warning: OSRM API test failed with status: {api_response.status_code}")
+            logger.warning(f"OSRM API test failed with status: {api_response.status_code}")
 
     except Exception as e:
-        print(f"Warning: Cannot connect to OSRM server: {e}")
+        logger.warning(f"Cannot connect to OSRM server: {e}")
         return False
 
     # Validate concurrent execution configuration
@@ -580,25 +589,14 @@ def validate_config() -> bool:
         max_instances = concurrent_config['max_concurrent_instances']
 
         if max_instances <= 0:
-            print("Error: max_concurrent_instances must be positive")
+            logger.error("max_concurrent_instances must be positive")
             return False
 
         if concurrent_config['memory_pool_per_instance'] <= 0:
-            print("Error: memory_pool_per_instance must be positive")
+            logger.error("memory_pool_per_instance must be positive")
             return False
 
-        print(f"✅ Concurrent execution configured: {max_instances} solver instances (threads + CUDA streams)")
-
-    # Validate memory management configuration
-    memory_config = config['cuopt']['memory_management']
-    if memory_config['enable_memory_monitoring']:
-        print("✅ GPU memory monitoring enabled")
-
-        if memory_config['aggressive_cleanup']:
-            print("✅ Aggressive memory cleanup enabled")
-
-        if memory_config['enable_context_managers']:
-            print("✅ Memory context managers enabled")
+        logger.info(f"Concurrent execution: {max_instances} solver instances")
 
     # Validate file paths
     for path_key in ['input_data_path', 'output_data_path', 'logs_path']:
@@ -606,43 +604,29 @@ def validate_config() -> bool:
         if not os.path.exists(path):
             try:
                 os.makedirs(path, exist_ok=True)
-                print(f"Created directory: {path}")
             except Exception as e:
-                print(f"Error creating directory {path}: {e}")
+                logger.error(f"Error creating directory {path}: {e}")
                 return False
 
     # Validate data limits
     if config['data']['max_technicians'] <= 0:
-        print("Error: max_technicians must be positive")
+        logger.error("max_technicians must be positive")
         return False
 
     if config['data']['max_work_orders'] <= 0:
-        print("Error: max_work_orders must be positive")
+        logger.error("max_work_orders must be positive")
         return False
-
-    # Validate OSRM configuration
-    if config['osrm']['max_locations_per_request'] > 100:
-        print("Warning: OSRM max_locations_per_request is high, may cause timeouts")
 
     # Validate API configuration
     if config['api']['port'] < 1024 or config['api']['port'] > 65535:
-        print("Warning: API port should be between 1024-65535")
+        logger.warning("API port should be between 1024-65535")
 
     # Validate solver configuration
     if config['cuopt']['default_time_limit'] <= 0:
-        print("Error: solver time_limit must be positive")
+        logger.error("solver time_limit must be positive")
         return False
 
-    # Validate memory thresholds
-    memory_optimization = config['optimization']['memory_optimization']
-    if memory_optimization['memory_threshold_for_sequential'] > 1.0:
-        print("Warning: memory_threshold_for_sequential should be <= 1.0")
-
-    api_memory = config['api']['memory_monitoring']
-    if api_memory['alert_threshold'] > 1.0:
-        print("Warning: memory alert_threshold should be <= 1.0")
-
-    print("✅ Configuration validation passed")
+    logger.info("Configuration validation passed")
     return True
 
 # =============================================================================

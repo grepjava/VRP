@@ -31,3 +31,6 @@ ui/dist/
 .env
 .env.local
 ui/.env.local
+
+# Claude Code local settings / memory
+.claude/

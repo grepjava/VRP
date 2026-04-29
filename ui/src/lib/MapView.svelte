@@ -20,6 +20,14 @@
     high: '#ffd60a', medium: '#0a84ff', low: '#30d158'
   }
 
+  // Escape user-supplied strings before inserting them into Leaflet popup HTML.
+  // Without this, a customer name like <script>... would execute in the browser.
+  const esc = s => String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+
   onMount(async () => {
     L = (await import('leaflet')).default
     map = L.map(mapEl, { zoomControl: true }).setView([3.1200, 101.6100], 13)
@@ -72,7 +80,7 @@
     technicians.forEach((tech, i) => {
       const color = ROUTE_COLORS[i % ROUTE_COLORS.length]
       const m = L.marker([tech.start_location.latitude, tech.start_location.longitude], { icon: techIcon(color) })
-        .bindPopup(`<b>🔧 ${tech.name}</b><br>${tech.start_location.address || ''}<br>Skills: ${tech.skills.join(', ')}`)
+        .bindPopup(`<b>🔧 ${esc(tech.name)}</b><br>${esc(tech.start_location.address)}<br>Skills: ${esc(tech.skills.join(', '))}`)
         .addTo(map)
       techMarkers.push(m)
     })
@@ -80,9 +88,9 @@
     workOrders.forEach((order, i) => {
       const label = String(i + 1)
       const m = L.marker([order.location.latitude, order.location.longitude], { icon: orderIcon(order.priority, label) })
-        .bindPopup(`<b>${order.customer_name || order.id}</b><br>${order.location.address || ''}<br>
-          <span style="color:${PRIORITY_COLORS[order.priority]}">${order.priority}</span> · ${order.work_type}<br>
-          ⏱ ${order.service_time} min`)
+        .bindPopup(`<b>${esc(order.customer_name || order.id)}</b><br>${esc(order.location.address)}<br>
+          <span style="color:${PRIORITY_COLORS[order.priority] || '#0a84ff'}">${esc(order.priority)}</span> · ${esc(order.work_type)}<br>
+          ⏱ ${Number(order.service_time)} min`)
         .addTo(map)
       orderMarkers.push(m)
     })

@@ -5,16 +5,15 @@ Enhanced with CUDA Streams, Concurrent Execution Support, and GPU Memory Managem
 
 import logging
 import time
-import traceback
 import asyncio
 import re
 import json
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Annotated
-from datetime import datetime
+from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 
-SCENARIOS_DIR = Path("data/scenarios")
+SCENARIOS_DIR = Path(__file__).parent / "data" / "scenarios"
 SCENARIOS_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -45,6 +44,9 @@ logging.basicConfig(
     level=getattr(logging, CONFIG['logging']['level']),
     format=CONFIG['logging']['format']
 )
+# Apply per-module log levels from config (e.g. core.solver_pool at INFO while root is WARNING)
+for _component, _level in CONFIG['logging'].get('component_levels', {}).items():
+    logging.getLogger(_component).setLevel(getattr(logging, _level))
 logger = logging.getLogger(__name__)
 
 # Import solver with better error handling
@@ -57,7 +59,7 @@ try:
     from core.solver import (
         TechnicianWorkOrderSolver, is_cuopt_available, get_cuopt_status,
         get_concurrent_solver_manager, solve_optimization_problems_concurrent,
-        ConcurrentSolverManager, get_gpu_memory_info
+        ConcurrentSolverManager, get_gpu_memory_info, initialize_gpu
     )
     cuopt_status_func = get_cuopt_status  # Store the function with a different name
     get_gpu_memory_info_func = get_gpu_memory_info
@@ -115,41 +117,38 @@ except ImportError as e:
 async def lifespan(app: FastAPI):
     """Application lifespan event handler"""
     # Startup
-    logger.info("Starting Technician WorkOrder Optimization API with GPU Memory Management")
+    logger.info("Starting Technician WorkOrder Optimization API")
 
     # Validate configuration
     if not validate_config():
         logger.error("Configuration validation failed")
 
+    # Initialise GPU memory pool (RMM) — must happen before any solver use
+    if solver_available:
+        initialize_gpu()
+
     # Check OSRM connectivity
     if not validate_osrm_connection():
         logger.warning("OSRM server not accessible")
 
-    # Check cuOpt availability
+    # Log solver readiness
     if solver_available:
-        logger.info("cuOpt solver is available and ready")
-        logger.info("✅ cuOpt solver ready for optimization")
-
         if concurrent_manager:
-            logger.info("Concurrent solver manager is ready")
-            logger.info("✅ Concurrent execution with GPU memory management enabled")
+            logger.info("✅ cuOpt solver ready with concurrent execution enabled")
         else:
-            logger.info("Concurrent execution not available")
-            logger.warning("⚠️ Concurrent execution disabled")
+            logger.warning("cuOpt available but concurrent execution disabled")
     else:
-        logger.warning("cuOpt solver is not available")
-        logger.warning("⚠️ cuOpt solver not available - optimization endpoints will fail")
+        logger.warning("⚠️ cuOpt solver not available — optimization endpoints will fail")
 
     # Log GPU memory status
     try:
         if get_gpu_memory_info_func:
             memory_info = get_gpu_memory_info_func()
-            logger.info(f"GPU Memory: {memory_info['gpu_used_mb']:.1f}MB used / {memory_info['gpu_total_mb']:.1f}MB total")
-            logger.info(f"💾 GPU Memory: {memory_info['gpu_used_mb']:.1f}MB used / {memory_info['gpu_total_mb']:.1f}MB total ({memory_info['gpu_usage_percent']:.1f}%)")
+            logger.info(f"💾 GPU Memory: {memory_info['gpu_used_mb']:.1f}MB / {memory_info['gpu_total_mb']:.1f}MB ({memory_info['gpu_usage_percent']:.1f}%)")
     except Exception as e:
         logger.warning(f"Could not get GPU memory info: {e}")
 
-    logger.info("API startup completed")
+    logger.info("API startup complete")
 
     yield
 
@@ -188,7 +187,7 @@ app = FastAPI(
 if CONFIG['api']['cors_enabled']:
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=CONFIG['api']['cors_origins'],
         allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -456,7 +455,7 @@ async def conversion_exception_handler(request: Request, exc: ConversionError):
         content={
             "error": "Data conversion error",
             "detail": str(exc),
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     )
 
@@ -464,16 +463,32 @@ async def conversion_exception_handler(request: Request, exc: ConversionError):
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     """Handle general exceptions"""
-    logger.error(f"Unexpected error: {exc}")
-    logger.error(traceback.format_exc())
+    logger.error("Unexpected error", exc_info=exc)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "error": "Internal server error",
             "detail": "An unexpected error occurred",
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     )
+
+
+# =============================================================================
+# OSRM health-check TTL cache
+# Prevents live HTTP round-trips to OSRM on every /health poll.
+# =============================================================================
+
+_osrm_health_cache: Dict[str, Any] = {"ok": None, "ts": 0.0}
+_OSRM_TTL = 30.0  # seconds
+
+
+def _osrm_status_cached() -> str:
+    now = time.time()
+    if now - _osrm_health_cache["ts"] > _OSRM_TTL:
+        _osrm_health_cache["ok"] = validate_osrm_connection()
+        _osrm_health_cache["ts"] = now
+    return "ok" if _osrm_health_cache["ok"] else "error"
 
 
 # =============================================================================
@@ -496,11 +511,11 @@ async def root():
 async def health_check():
     """Health check endpoint with GPU memory monitoring"""
 
-    # Check OSRM connectivity
-    osrm_status = "ok" if validate_osrm_connection() else "error"
+    # OSRM connectivity — TTL-cached; live check is too expensive on every poll
+    osrm_status = _osrm_status_cached()
 
-    # Check configuration
-    config_status = "ok" if validate_config() else "error"
+    # Configuration is validated at startup; no need to re-check on every poll
+    config_status = "ok"
 
     # Check cuOpt availability
     cuopt_status = "ok" if solver_available and is_cuopt_available() else "error"
@@ -542,7 +557,7 @@ async def health_check():
 
     return HealthResponseModel(
         status=overall_status,
-        timestamp=datetime.now().isoformat(),
+        timestamp=datetime.now(timezone.utc).isoformat(),
         version="1.0.0",
         services={
             "osrm": osrm_status,
@@ -664,12 +679,10 @@ async def optimize_routes(request: OptimizationRequestModel):
                 logger.info(f"✅ Sequential optimization completed: {solution.status.value}")
 
         except Exception as e:
-            logger.error(f"❌ Optimization failed: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.exception(f"Optimization failed: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Optimization failed: {str(e)}"
+                detail="Optimization failed due to an internal error"
             )
 
         # Get final memory state
@@ -711,19 +724,15 @@ async def optimize_routes(request: OptimizationRequestModel):
         raise
     except ConversionError as e:
         logger.error(f"Conversion error: {e}")
-        logger.error(f"❌ Conversion error: {e}")
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Data conversion error: {str(e)}"
         )
     except Exception as e:
-        logger.error(f"Optimization error: {e}")
-        logger.error(f"❌ Unexpected error: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.exception(f"Unexpected optimization error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Optimization failed: {str(e)}"
+            detail="Optimization failed due to an internal error"
         )
 
 
@@ -869,11 +878,10 @@ async def optimize_routes_batch(request: BatchOptimizationRequestModel):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Batch optimization error: {e}")
-        logger.error(f"❌ Batch optimization failed: {e}")
+        logger.exception(f"Batch optimization failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Batch optimization failed: {str(e)}"
+            detail="Batch optimization failed due to an internal error"
         )
 
 
@@ -980,7 +988,7 @@ async def get_cuopt_status_endpoint():
             "cuopt_details": status_info,
             "concurrent_execution": concurrent_info,
             "memory_info": memory_info,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     except Exception as e:
         return {
@@ -988,7 +996,7 @@ async def get_cuopt_status_endpoint():
             "cuopt_details": {"error": str(e)},
             "concurrent_execution": {"enabled": False, "error": str(e)},
             "memory_info": None,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
 
 
@@ -1016,12 +1024,12 @@ async def get_concurrent_statistics():
         return {
             "statistics": stats,
             "memory_info": memory_info,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get statistics: {str(e)}"
+            detail="Failed to get statistics"
         )
 
 
@@ -1040,13 +1048,13 @@ async def get_memory_status():
 
         return {
             "memory_info": memory_info,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "memory_management": "enabled"
         }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get memory status: {str(e)}"
+            detail="Failed to get memory status"
         )
 
 
@@ -1070,7 +1078,7 @@ async def save_scenario(req: SaveScenarioRequestModel):
         "name": req.name,
         "city": req.city,
         "source": req.source,
-        "created_at": datetime.now().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "tech_count": len(req.technicians),
         "order_count": len(req.work_orders),
         "technicians": req.technicians,
@@ -1102,22 +1110,34 @@ async def list_scenarios():
     return scenarios
 
 
+def _safe_scenario_path(slug: str) -> Path:
+    """Return the path for a scenario slug, raising 400 on path-traversal attempts."""
+    safe = _slugify(slug)
+    if not safe or safe != slug:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid scenario name")
+    path = (SCENARIOS_DIR / f"{safe}.json").resolve()
+    if not path.is_relative_to(SCENARIOS_DIR.resolve()):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid scenario name")
+    return path
+
+
 @app.get("/vrp/scenarios/{slug}")
 async def load_scenario(slug: str):
     """Load a saved scenario including full technician and work order data"""
-    path = SCENARIOS_DIR / f"{slug}.json"
+    path = _safe_scenario_path(slug)
     if not path.exists():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Scenario '{slug}' not found")
     try:
         return json.loads(path.read_text(encoding="utf-8"))
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Could not read scenario: {e}")
+    except Exception:
+        logger.exception(f"Could not read scenario {slug}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not read scenario")
 
 
 @app.delete("/vrp/scenarios/{slug}", status_code=status.HTTP_200_OK)
 async def delete_scenario(slug: str):
     """Delete a saved scenario"""
-    path = SCENARIOS_DIR / f"{slug}.json"
+    path = _safe_scenario_path(slug)
     if not path.exists():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Scenario '{slug}' not found")
     path.unlink()
@@ -1136,15 +1156,19 @@ async def generate_demo(request: DemoGenerateRequestModel):
     """Generate realistic random demo data for a given city using OpenStreetMap geocoding"""
     try:
         from core.demo_generator import generate_demo_data
-        data = generate_demo_data(request.city, request.num_orders, request.num_technicians)
+        # Run blocking outbound HTTP calls (Nominatim / Overpass) off the async event loop
+        loop = asyncio.get_event_loop()
+        data = await loop.run_in_executor(
+            None, generate_demo_data, request.city, request.num_orders, request.num_technicians
+        )
         return data
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
-        logger.error(f"Demo generation failed: {e}")
+        logger.exception(f"Demo generation failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Demo generation failed: {str(e)}"
+            detail="Demo generation failed — upstream geocoding service may be unavailable"
         )
 
 

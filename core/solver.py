@@ -7,7 +7,9 @@ per-operation context managers to ensure prompt release between requests.
 """
 from __future__ import annotations
 
+import copy
 import logging
+import math
 import time
 import numpy as np
 from threading import Lock
@@ -26,37 +28,6 @@ try:
     from cuopt.routing import DataModel, SolverSettings, Solve
     cuopt_available = True
     logger.info("✅ cuOpt routing imported successfully")
-
-    try:
-        import rmm
-        from config import get_config
-        config = get_config()
-        memory_config = config['cuopt']['memory_management']
-        rmm.reinitialize(
-            pool_allocator=True,
-            initial_pool_size=memory_config['initial_pool_size'],
-            maximum_pool_size=memory_config['maximum_pool_size']
-        )
-        logger.info("✅ GPU memory pool initialized for concurrent execution")
-    except ImportError:
-        logger.warning("⚠️ rmm not available, using default GPU memory management")
-    except Exception as e:
-        logger.warning(f"⚠️ GPU memory pool initialization failed: {e}")
-
-    try:
-        import cupy as cp
-        from config import get_config
-        config = get_config()
-        concurrent_config = config['cuopt']['concurrent_execution']
-        if concurrent_config['enabled']:
-            max_instances = concurrent_config['max_concurrent_instances']
-            logger.info(f"🚀 Initializing {max_instances} CUDA streams...")
-            logger.info("✅ CUDA streams support ready")
-    except ImportError:
-        logger.warning("⚠️ CuPy not available, CUDA streams will be limited")
-    except Exception as e:
-        logger.warning(f"⚠️ CUDA streams initialization failed: {e}")
-
 except ImportError as e:
     logger.error(f"❌ cuOpt import failed: {e}")
     logger.warning("⚠️ Solver will not be available")
@@ -64,7 +35,47 @@ except ImportError as e:
     SolverSettings = None
     Solve = None
 
-import cudf
+
+def initialize_gpu() -> None:
+    """Initialize the RMM memory pool and log CUDA stream readiness.
+
+    Must be called once at application startup (from the lifespan handler),
+    not at import time, so test contexts can import this module without
+    triggering a GPU pool allocation.
+    """
+    if not cuopt_available:
+        return
+
+    try:
+        import rmm
+        from config import get_config
+        memory_config = get_config()['cuopt']['memory_management']
+        rmm.reinitialize(
+            pool_allocator=True,
+            initial_pool_size=memory_config['initial_pool_size'],
+            maximum_pool_size=memory_config['maximum_pool_size']
+        )
+        logger.info("✅ GPU memory pool initialized")
+    except ImportError:
+        logger.warning("⚠️ rmm not available, using default GPU memory management")
+    except Exception as e:
+        logger.warning(f"⚠️ GPU memory pool initialization failed: {e}")
+
+    try:
+        import cupy as cp  # noqa: F401 — presence check only
+        from config import get_config
+        concurrent_config = get_config()['cuopt']['concurrent_execution']
+        if concurrent_config['enabled']:
+            logger.info(f"✅ CUDA streams ready ({concurrent_config['max_concurrent_instances']} instances)")
+    except ImportError:
+        logger.warning("⚠️ CuPy not available, CUDA streams will be limited")
+    except Exception as e:
+        logger.warning(f"⚠️ CUDA streams initialization failed: {e}")
+
+try:
+    import cudf
+except ImportError:
+    cudf = None
 
 from config import CONFIG, get_optimal_time_limit, get_concurrent_solver_config
 from core.models import (
@@ -98,7 +109,7 @@ class TechnicianWorkOrderSolver:
         self.solver_id = solver_id
         self.concurrent_mode = concurrent_mode
 
-        self.config = CONFIG.copy()
+        self.config = copy.deepcopy(CONFIG)
         if config:
             for key, value in config.items():
                 if key in self.config and isinstance(self.config[key], dict) and isinstance(value, dict):
@@ -492,7 +503,7 @@ class TechnicianWorkOrderSolver:
                     prev_location_idx = location_idx
 
                     stamp = row['arrival_stamp']
-                    arrival_mins = int(stamp) if stamp is not None and stamp == stamp else 0
+                    arrival_mins = int(stamp) if stamp is not None and not math.isnan(float(stamp)) else 0
                     assignment = Assignment(
                         technician_id=problem.technicians[tech_idx].id,
                         work_order_id=wo.id,

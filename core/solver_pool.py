@@ -1,6 +1,7 @@
 """Concurrent solver pool: request queuing, CUDA stream assignment, and lifecycle."""
 from __future__ import annotations
 
+import copy
 import logging
 import time
 import uuid
@@ -51,7 +52,7 @@ class ConcurrentSolverManager:
     """Manages multiple concurrent cuOpt solver instances with CUDA streams and memory management"""
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        self.config = CONFIG.copy()
+        self.config = copy.deepcopy(CONFIG)
         if config:
             for key, value in config.items():
                 if key in self.config and isinstance(self.config[key], dict) and isinstance(value, dict):
@@ -70,7 +71,8 @@ class ConcurrentSolverManager:
 
         self.memory_limit_per_instance = self.concurrent_config['memory_pool_per_instance'] / 1024  # MB → GB
 
-        self.cuda_streams = CUDAStreamManager(self.num_cuda_streams)
+        queue_timeout = self.concurrent_config.get('queue_timeout', 30.0)
+        self.cuda_streams = CUDAStreamManager(self.num_cuda_streams, queue_timeout=queue_timeout)
 
         # Request tracking — capped at 500 entries (oldest evicted) to prevent unbounded growth
         self.results: OrderedDict = OrderedDict()
@@ -171,7 +173,10 @@ class ConcurrentSolverManager:
             config=config,
             priority=priority
         )
-        future = self.executor.submit(self._process_request, request)
+        try:
+            future = self.executor.submit(self._process_request, request)
+        except RuntimeError as exc:
+            raise RuntimeError(f"Solver pool is shut down, cannot accept new requests: {exc}") from exc
         self.active_requests[request_id] = future
         with self.stats_lock:
             self.stats['total_requests'] += 1
@@ -281,7 +286,7 @@ class ConcurrentSolverManager:
                 if "memory" in error_msg.lower():
                     self.stats['memory_stats']['memory_warnings'] += 1
 
-            logger.error(f"❌ Request {request.request_id[:8]} failed: {error_msg}")
+            logger.exception(f"Request {request.request_id[:8]} failed: {error_msg}")
             return result
 
         finally:

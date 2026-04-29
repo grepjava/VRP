@@ -14,8 +14,9 @@ logger = logging.getLogger(__name__)
 class CUDAStreamManager:
     """Manages CUDA streams for concurrent cuOpt execution"""
 
-    def __init__(self, num_streams: int):
+    def __init__(self, num_streams: int, queue_timeout: float = 30.0):
         self.num_streams = num_streams
+        self.queue_timeout = queue_timeout
         self.streams = []
         self.stream_lock = Lock()
         self.available_streams = Queue()
@@ -34,8 +35,9 @@ class CUDAStreamManager:
                 self.available_streams.put(i)
 
     @contextmanager
-    def get_stream(self, timeout: float = 30.0):
-        """Get an available CUDA stream"""
+    def get_stream(self, timeout: float = None):
+        """Get an available CUDA stream, waiting up to queue_timeout seconds."""
+        timeout = self.queue_timeout if timeout is None else timeout
         try:
             stream_id = self.available_streams.get(timeout=timeout)
             stream = self.streams[stream_id]
