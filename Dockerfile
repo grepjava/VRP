@@ -10,9 +10,9 @@ USER root
 WORKDIR /app
 
 # ── cuOpt routing library ─────────────────────────────────────────────────────
-# Installs cuopt (routing solver) from NVIDIA's conda channel.
-# Pin the version if you need reproducible builds: cuopt=25.02.*
-RUN mamba install -y -c rapidsai -c nvidia -c conda-forge cuopt \
+# Pin cuopt to the same RAPIDS release cycle as the base image.
+# To upgrade: bump both RAPIDS_IMAGE tag and the cuopt version together.
+RUN mamba install -y -c rapidsai -c nvidia -c conda-forge "cuopt=26.06.*" \
     && mamba clean -a -y
 
 # ── Python API dependencies ───────────────────────────────────────────────────
