@@ -1,6 +1,7 @@
 import time
 import logging
 from datetime import datetime, timezone
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException, status
 
@@ -21,7 +22,7 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-def _get_memory() -> dict | None:
+def _get_memory() -> Optional[dict]:
     try:
         if deps.get_gpu_memory_info_func:
             return deps.get_gpu_memory_info_func()

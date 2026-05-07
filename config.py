@@ -4,6 +4,7 @@ using cuOpt and OSRM for route optimization
 OPTIMIZED FOR HIGH PERFORMANCE WITH CUDA STREAMS AND GPU MEMORY MANAGEMENT
 """
 
+import copy
 import logging
 import os
 from typing import Dict, Any, Optional
@@ -356,13 +357,13 @@ def get_config() -> Dict[str, Any]:
         return _config_cache
 
     config = {
-        'osrm': OSRM_CONFIG.copy(),
-        'cuopt': CUOPT_CONFIG.copy(),
-        'business': BUSINESS_CONFIG.copy(),
-        'data': DATA_CONFIG.copy(),
-        'optimization': OPTIMIZATION_CONFIG.copy(),
-        'logging': LOGGING_CONFIG.copy(),
-        'api': API_CONFIG.copy()
+        'osrm': copy.deepcopy(OSRM_CONFIG),
+        'cuopt': copy.deepcopy(CUOPT_CONFIG),
+        'business': copy.deepcopy(BUSINESS_CONFIG),
+        'data': copy.deepcopy(DATA_CONFIG),
+        'optimization': copy.deepcopy(OPTIMIZATION_CONFIG),
+        'logging': copy.deepcopy(LOGGING_CONFIG),
+        'api': copy.deepcopy(API_CONFIG)
     }
 
     # OSRM host + port — merge into a single base_url so they can't diverge

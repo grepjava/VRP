@@ -27,7 +27,9 @@ def _safe_scenario_path(slug: str) -> Path:
     if not safe or safe != slug:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid scenario name")
     path = (SCENARIOS_DIR / f"{safe}.json").resolve()
-    if not path.is_relative_to(SCENARIOS_DIR.resolve()):
+    try:
+        path.relative_to(SCENARIOS_DIR.resolve())
+    except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid scenario name")
     return path
 
